@@ -2,7 +2,7 @@ module Parse where
 
 import Prelude
 
-import Control.Alternative (empty, (<|>))
+import Control.Alternative ((<|>))
 import Data.Array (many, null, some)
 import Data.BigInt (fromString)
 import Data.Either (Either)
@@ -89,7 +89,11 @@ parseExpr :: Unit -> Parser Expr
 parseExpr unit = parseOperators unit
 
 parseRepl :: Parser (Maybe Expr)
-parseRepl = ignored *> (option Nothing (Just <$> parseExpr unit)) <* ignored <* eof
+parseRepl = do
+  ignored
+  expr <- option Nothing $ Just <$> parseExpr unit
+  eof
+  pure $ expr
 
 runParseRepl :: String -> Either ParseError (Maybe Expr)
 runParseRepl input = runParser input parseRepl
