@@ -4,6 +4,7 @@ import Prelude
 
 import Effect (Effect)
 import Effect.Console (log)
+import Parse (runParseRepl)
 
 main :: Effect Unit
-main = log "Hello, world!"
+main = log $ show $ runParseRepl "\"Hello, world!\""

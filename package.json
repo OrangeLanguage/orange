@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "repl": "spago run"
+  },
+  "dependencies": {
+    "big-integer": "^1.6.48"
+  }
+}
