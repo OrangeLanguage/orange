@@ -1,6 +1,6 @@
-# orange
+# Orange
 
-The orange programming language compiler.
+The Orange programming language compiler.
 
 ## Getting Started
 
