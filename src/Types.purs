@@ -20,6 +20,13 @@ data Expr
   | DefExpr String Expr
   | InfixExpr Assoc String BigInt Expr
 
+data Ir
+  = IdentIr String
+  | CharIr Char
+  | IntIr BigInt
+  | StringIr String
+  | ApplyIr Ir (List Ir) String Ir
+
 instance showAssox :: Show Assoc where
   show Left = "left"
   show Right = "right"
@@ -33,6 +40,13 @@ instance showExpr :: Show Expr where
   show (OpExpr expr operators) = show expr <> " " <> (joinWith " " $ fromFoldable $ map showTuple operators)
   show (DefExpr name expr) = "def " <> name <> " = " <> show expr
   show (InfixExpr assoc op int expr) = "infix " <> show assoc <> " " <> op <> " " <> toString int <> " = " <> show expr
+
+instance showIr :: Show Ir where
+  show (IdentIr name) = name
+  show (IntIr int) = toString int
+  show (CharIr char) = show char
+  show (StringIr string) = show string
+  show (ApplyIr expr args name cont) = show expr <> "(" <> (joinWith " " $ fromFoldable $ map show args) <> ") " <> name <> " -> " <> show cont
 
 showTuple :: forall a b. Show a => Show b => Tuple a b -> String
 showTuple (Tuple a b) = show a <> " " <> show b
