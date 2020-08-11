@@ -5,7 +5,7 @@ import Prelude
 import Control.Alternative ((<|>))
 import Data.Array (foldl)
 import Data.Array as Array
-import Data.BigInt (fromString)
+import Data.BigInt (BigInt, fromString)
 import Data.Either (Either)
 import Data.List (List, many, null)
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -16,7 +16,7 @@ import Text.Parsing.Parser (Parser) as P
 import Text.Parsing.Parser.Combinators (option, sepBy, skipMany, try)
 import Text.Parsing.Parser.String (char, eof, noneOf, oneOf, string)
 import Text.Parsing.Parser.Token (digit, letter, space)
-import Types (Expr(..))
+import Types (Assoc(..), Expr(..))
 
 type Parser a = P.Parser String a
 data ParsingError = ParsingError String ParseError
@@ -29,36 +29,36 @@ escape = do
   void $ string "\\\""
   pure '"'
 
-parseIdent :: Parser Expr
+parseIdent :: Parser String
 parseIdent = do
   head <- letter
   tail <- fromCharArray <$> Array.many (letter <|> digit)
   ignored
-  pure $ IdentExpr $ singleton head <> tail
+  pure $ singleton head <> tail
 
-parseInteger :: Parser Expr
-parseInteger = do
+parseInt :: Parser BigInt
+parseInt = do
   sign <- option "" $ string "-"
   number <- fromCharArray <$> Array.some digit
   ignored
   result <- fromMaybe (fail "Invalid number") $ map pure $ fromString $ sign <> number
-  pure $ IntExpr result
+  pure result
 
-parseChar :: Parser Expr
+parseChar :: Parser Char
 parseChar = do
   void $ char '\''
   c <- try escape <|> noneOf [ '\'' ]
   void $ char '\''
   ignored
-  pure $ CharExpr c
+  pure c
 
-parseString :: Parser Expr
+parseString :: Parser String
 parseString = do
   void $ char '"'
   chars <- fromCharArray <$> Array.many (try escape <|> noneOf [ '\"' ])
   void $ char '"'
   ignored
-  pure $ StringExpr chars
+  pure chars
 
 parseParens :: Parser Expr
 parseParens = do
@@ -70,7 +70,12 @@ parseParens = do
   pure expr
 
 parseAtomic :: Unit -> Parser Expr
-parseAtomic unit = parseIdent <|> parseInteger <|> parseChar <|> parseString <|> parseParens
+parseAtomic unit = 
+  IdentExpr <$> parseIdent <|> 
+  IntExpr <$> parseInt <|> 
+  CharExpr <$> parseChar <|> 
+  StringExpr <$> parseString <|> 
+  parseParens
 
 parseApply :: Parser (List Expr)
 parseApply = do 
@@ -87,10 +92,15 @@ parseApplies unit = do
   applies <- many parseApply
   pure $ foldl ApplyExpr expr applies
 
-parseOperator :: Parser (Tuple String Expr)
-parseOperator = do
+parseOp :: Parser String
+parseOp = do
   name <- fromCharArray <$> Array.some (oneOf $ toCharArray "~`!@$%^&*-=+\\|;:<>.?")
   ignored
+  pure name
+
+parseOperator :: Parser (Tuple String Expr)
+parseOperator = do
+  name <- parseOp
   expr <- parseApplies unit
   pure $ Tuple name expr
 
@@ -100,10 +110,36 @@ parseOperators unit = do
   operators <- many parseOperator
   pure $ if null operators
     then expr
-    else OperatorExpr expr operators
+    else OpExpr expr operators
+
+parseDef :: Parser Expr
+parseDef = do
+  void $ string "def"
+  ignored
+  name <- parseIdent
+  void $ string "="
+  ignored
+  expr <- parseExpr unit
+  pure $ DefExpr name expr
+
+parseAssoc :: Parser Assoc
+parseAssoc = string "left" *> pure Left <|> string "right" *> pure Right
+
+parseInfix :: Parser Expr
+parseInfix = do
+  void $ string "infix"
+  ignored
+  assoc <- parseAssoc
+  ignored
+  op <- parseOp
+  int <- parseInt
+  void $ string "="
+  ignored
+  expr <- parseExpr unit
+  pure $ InfixExpr assoc op int expr
 
 parseExpr :: Unit -> Parser Expr
-parseExpr unit = parseOperators unit
+parseExpr unit = parseDef <|> parseInfix <|> parseOperators unit
 
 parseRepl :: Parser (Maybe Expr)
 parseRepl = do
