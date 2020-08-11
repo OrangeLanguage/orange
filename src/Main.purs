@@ -7,4 +7,4 @@ import Effect.Console (log)
 import Parse (runParseRepl)
 
 main :: Effect Unit
-main = log $ show $ runParseRepl "(a : 1 : 'a' : \"1\")"
+main = log $ show $ runParseRepl "(a : 1 : 'a' : \"1\" : f(a + 1, a() + 1()))"

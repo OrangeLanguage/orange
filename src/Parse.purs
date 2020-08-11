@@ -3,15 +3,17 @@ module Parse where
 import Prelude
 
 import Control.Alternative ((<|>))
-import Data.Array (many, null, some)
+import Data.Array (foldl)
+import Data.Array as Array
 import Data.BigInt (fromString)
 import Data.Either (Either)
+import Data.List (List, many, null)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String.CodeUnits (fromCharArray, singleton, toCharArray)
 import Data.Tuple (Tuple(..))
 import Text.Parsing.Parser (ParseError, fail, runParser)
 import Text.Parsing.Parser (Parser) as P
-import Text.Parsing.Parser.Combinators (option, skipMany, try)
+import Text.Parsing.Parser.Combinators (option, sepBy, skipMany, try)
 import Text.Parsing.Parser.String (char, eof, noneOf, oneOf, string)
 import Text.Parsing.Parser.Token (digit, letter, space)
 import Types (Expr(..))
@@ -30,14 +32,14 @@ escape = do
 parseIdent :: Parser Expr
 parseIdent = do
   head <- letter
-  tail <- fromCharArray <$> many (letter <|> digit)
+  tail <- fromCharArray <$> Array.many (letter <|> digit)
   ignored
   pure $ IdentExpr $ singleton head <> tail
 
 parseInteger :: Parser Expr
 parseInteger = do
   sign <- option "" $ string "-"
-  number <- fromCharArray <$> some digit
+  number <- fromCharArray <$> Array.some digit
   ignored
   result <- fromMaybe (fail "Invalid number") $ map pure $ fromString $ sign <> number
   pure $ IntExpr result
@@ -53,7 +55,7 @@ parseChar = do
 parseString :: Parser Expr
 parseString = do
   void $ char '"'
-  chars <- fromCharArray <$> many (try escape <|> noneOf [ '\"' ])
+  chars <- fromCharArray <$> Array.many (try escape <|> noneOf [ '\"' ])
   void $ char '"'
   ignored
   pure $ StringExpr chars
@@ -65,21 +67,36 @@ parseParens = do
   expr <- parseExpr unit
   void $ char ')'
   ignored
-  pure $ expr
+  pure expr
 
 parseAtomic :: Unit -> Parser Expr
 parseAtomic unit = parseIdent <|> parseInteger <|> parseChar <|> parseString <|> parseParens
 
+parseApply :: Parser (List Expr)
+parseApply = do 
+  void $ char '('
+  ignored
+  args <- sepBy (parseExpr unit) (char ',' *> ignored)
+  void $ char ')'
+  ignored
+  pure args
+
+parseApplies :: Unit -> Parser Expr
+parseApplies unit = do
+  expr <- parseAtomic unit
+  applies <- many parseApply
+  pure $ foldl ApplyExpr expr applies
+
 parseOperator :: Parser (Tuple String Expr)
 parseOperator = do
-  name <- fromCharArray <$> many (oneOf $ toCharArray "~`!@$%^&*-=+\\|;:<>,.?")
+  name <- fromCharArray <$> Array.some (oneOf $ toCharArray "~`!@$%^&*-=+\\|;:<>.?")
   ignored
-  expr <- parseAtomic unit
+  expr <- parseApplies unit
   pure $ Tuple name expr
 
 parseOperators :: Unit -> Parser Expr
 parseOperators unit = do
-  expr <- parseAtomic unit
+  expr <- parseApplies unit
   operators <- many parseOperator
   pure $ if null operators
     then expr
