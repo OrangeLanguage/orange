@@ -17,8 +17,7 @@ compileCont (ApplyExpr expr args) f =
     put $ i + 1
     let name = show i
     cont <- f $ IdentIr name
-    compileConts args \a -> do 
-      pure $ ApplyIr e a name cont
+    compileConts args \a -> pure $ ApplyIr e a name cont
 
 compileConts :: Partial => List Expr -> (List Ir -> State Int Ir) -> State Int Ir
 compileConts Nil f = f Nil
