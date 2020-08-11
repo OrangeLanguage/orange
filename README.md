@@ -14,6 +14,6 @@ npm install
 ### Build & Run the REPL
 
 ```bash
-pulp build
+spago build
 npm run repl
 ```
