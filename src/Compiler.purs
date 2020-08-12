@@ -23,7 +23,10 @@ newtype Compiler a = Compiler (ReaderT Env (StateT Int (Except String)) a)
 
 derive instance newtypeCompiler :: Newtype (Compiler a) _
 derive newtype instance monadErrorCompiler :: MonadError String Compiler
+derive newtype instance functorCompiler :: Functor Compiler
+derive newtype instance applyCompiler :: Apply Compiler
 derive newtype instance applicativeCompiler :: Applicative Compiler
+derive newtype instance monadCompiler :: Monad Compiler 
 derive newtype instance monadStateCompiler :: MonadState Int Compiler
 derive newtype instance monadThrowCompiler :: MonadThrow String Compiler
 derive newtype instance bindCompiler :: Bind Compiler
