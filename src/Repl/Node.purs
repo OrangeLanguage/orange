@@ -51,7 +51,7 @@ instance replNodeRepl :: Repl Js.Error NodeRepl where
     NodeRepl $ lift $ lift $ ContT \cont -> question prompt cont iface
   run (Compile tree) = do
     pure unit
-  run (Print tree) = liftEffect $ log $ showExpr 20 tree
+  run (Print tree) = log $ showExpr 20 tree
 
 evalNodeRepl :: forall a. NodeRepl a -> Effect Unit
 evalNodeRepl (NodeRepl n) = do
