@@ -154,8 +154,15 @@ parseInfix = do
   expr <- parseExpr unit
   pure $ InfixExpr assoc op int expr
 
+parseExtern :: Parser Expr
+parseExtern = do
+  void $ string "extern"
+  ignored
+  name <- parseIdent
+  pure $ ExternExpr name
+
 parseExpr :: Unit -> Parser Expr
-parseExpr unit = parseDef <|> parseInfix <|> parseOperators unit
+parseExpr unit = parseDef <|> parseInfix <|> parseExtern <|> parseOperators unit
 
 parseRepl :: Parser (Maybe Expr)
 parseRepl = do

@@ -21,6 +21,7 @@ data Expr
   | OpExpr Expr (List (Tuple String Expr))
   | DefExpr String Expr
   | InfixExpr Assoc String BigInt Expr
+  | ExternExpr String
 
 data Ir
   = IdentIr String
@@ -46,6 +47,7 @@ instance showExpr :: Show Expr where
   show (OpExpr expr operators) = show expr <> " " <> (joinWith " " $ fromFoldable $ map showTuple operators)
   show (DefExpr name expr) = "def " <> name <> " = " <> show expr
   show (InfixExpr assoc op int expr) = "infix " <> show assoc <> " " <> op <> " " <> toString int <> " = " <> show expr
+  show (ExternExpr name) = "extern " <> name
 
 instance showIr :: Show Ir where
   show (IdentIr name) = name
