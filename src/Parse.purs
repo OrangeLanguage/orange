@@ -38,7 +38,7 @@ incremental more incrementalParser = do
         throwError e
 
 ignored :: Parser Unit
-ignored = skipMany $ void space
+ignored = skipMany space
 
 escape :: Parser Char
 escape = do
