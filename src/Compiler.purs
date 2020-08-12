@@ -59,6 +59,7 @@ compileCont (OpExpr expr operators) f = do
         Just op -> pure $ Tuple op e
 compileCont (DefExpr name expr) f = local (insertGlobal name) $ compileCont expr f
 compileCont (InfixExpr assoc name prec expr) f = local (insertOp assoc name prec expr) $ compileCont expr f
+compileCont (ExternExpr name) f = local (insertGlobal name) (f $ IdentIr name)
 
 compileConts :: List Expr -> (List Ir -> Compiler Ir) -> Compiler Ir
 compileConts Nil f = f Nil
