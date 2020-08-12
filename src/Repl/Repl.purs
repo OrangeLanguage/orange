@@ -15,6 +15,8 @@ import Parse (incremental, parseRepl)
 import Text.Parsing.Parser (ParseError, ParserT, hoistParserT, runParserT)
 import Types (Expr)
 
+foreign import orange :: String -> String
+
 type ReplInput m s = m s
 
 data ReplCommand = Compile Expr | Print Expr
@@ -32,10 +34,10 @@ class MonadError e m <= Repl e m | m -> e where
   run :: ReplCommand -> m Unit
 
 more :: forall m e. Repl e m => m String
-more = query "........ " <#> append "\n"
+more = query "       > " <#> append "\n"
 
 input :: forall m e. Repl e m => m String
-input = query "orange > "
+input = query (orange "orange" <> " > ")
 
 parse :: forall m e. Repl e m => String -> m (Maybe Expr)
 parse line = do

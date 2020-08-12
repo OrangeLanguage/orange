@@ -3,6 +3,7 @@
     "repl": "spago run"
   },
   "dependencies": {
-    "big-integer": "^1.6.48"
+    "big-integer": "^1.6.48",
+    "chalk": "^4.1.0"
   }
 }
