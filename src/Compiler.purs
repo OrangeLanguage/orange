@@ -14,7 +14,7 @@ import Data.Set (Set)
 import Data.Set as Set
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
-import Types (Assoc, Expr(..), Ir(..), Op(..))
+import Types (Assoc(..), Expr(..), Ir(..), Op(..))
 
 type Compiler a = ReaderT Env (StateT Int (Except String)) a
 
@@ -65,14 +65,14 @@ compileConts (car : cdr) f = compileCont car \carC -> compileConts cdr \c -> f (
 
 applyOps :: Partial => List (Tuple Op Expr) -> List Op -> List Expr -> Expr
 applyOps Nil Nil (expr : Nil) = expr
-applyOps Nil ((Op assoc proc expr) : ops) (left : right : exprs) = applyOps Nil ops ((ApplyExpr expr (left : right : Nil)) : exprs)
+applyOps Nil ((Op assoc proc expr) : ops) (right : left : exprs) = applyOps Nil ops ((ApplyExpr expr (left : right : Nil)) : exprs)
 applyOps ((Tuple op expr) : rest) ops exprs = 
   let (Tuple ops' exprs') = runOp op ops exprs
   in applyOps rest ops' (expr : exprs')
 
 runOp :: Partial => Op -> List Op -> List Expr -> (Tuple (List Op) (List Expr))
 runOp op Nil exprs = Tuple (op : Nil) exprs
-runOp op@(Op _ opPrec expr) (pop@(Op _ popPrec _) : ops) (left : right : exprs) =  
-  if popPrec > opPrec 
+runOp op@(Op assoc opPrec expr) (pop@(Op _ popPrec _) : ops) (right : left : exprs) =  
+  if popPrec > opPrec || (popPrec == opPrec && assoc == Left)
   then runOp op ops ((ApplyExpr expr (left : right : Nil)) : exprs)
   else Tuple (op : pop : ops) (left : right : exprs)

@@ -29,6 +29,7 @@ data Ir
   | StringIr String
   | ApplyIr Ir (List Ir) String Ir
 
+derive instance eqAssoc :: Eq Assoc
 instance showAssox :: Show Assoc where
   show Left = "left"
   show Right = "right"
