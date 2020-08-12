@@ -17,7 +17,7 @@ import Effect.Class.Console (log, logShow)
 import Effect.Exception (Error) as Js
 import Effect.Exception (message, throwException)
 import Node.ReadLine (Interface, createConsoleInterface, noCompletion, question)
-import Pretty (showExpr)
+import Pretty (showExpr, showIr)
 import Repl (class Repl, ReplCommand(..), ReplError(..))
 
 foreign import getCharImpl :: (forall a. a -> Maybe a) -> (forall a. Maybe a) -> Effect (Maybe String)
@@ -52,7 +52,7 @@ instance replNodeRepl :: Repl Js.Error NodeRepl where
     NodeRepl $ lift $ lift $ ContT \cont -> question prompt cont iface
   run (Compile tree) = do
     let result = runCompiler $ compileCont tree pure
-    either logShow logShow result
+    either logShow (log <<< showIr 20) result
   run (Print tree) = log $ showExpr 20 tree
 
 evalNodeRepl :: forall a. NodeRepl a -> Effect Unit
