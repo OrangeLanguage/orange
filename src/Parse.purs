@@ -3,23 +3,39 @@ module Parse where
 import Prelude
 
 import Control.Alternative ((<|>))
+import Control.Monad.Error.Class (catchError, throwError)
+import Control.Monad.State (get, lift, put)
 import Data.Array (foldl)
 import Data.Array as Array
 import Data.BigInt (BigInt, fromString)
 import Data.Either (Either)
-import Data.List (List, many, null)
+import Data.List (List, many)
+import Data.List (null) as List
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String.CodeUnits (fromCharArray, singleton, toCharArray)
 import Data.Tuple (Tuple(..))
-import Text.Parsing.Parser (ParseError, fail, runParser)
+import Text.Parsing.Parser (ParseError, ParseState(..), ParserT, fail, runParser)
 import Text.Parsing.Parser (Parser) as P
 import Text.Parsing.Parser.Combinators (option, sepBy, skipMany, try)
-import Text.Parsing.Parser.String (char, eof, noneOf, oneOf, string)
+import Text.Parsing.Parser.String (class StringLike, char, eof, noneOf, oneOf, string, null)
 import Text.Parsing.Parser.Token (digit, letter, space)
 import Types (Assoc(..), Expr(..))
 
 type Parser a = P.Parser String a
 data ParsingError = ParsingError String ParseError
+
+incremental :: forall m s a. StringLike s => Semigroup s => Monad m => m s -> ParserT s m a -> ParserT s m a
+incremental more incrementalParser = do
+  (ParseState previous position _) <- get
+  catchError (try incrementalParser) \e -> do
+    (ParseState leftOver _ consumed) <- get
+    if null leftOver
+      then do
+        extra <- lift $ more
+        put $ ParseState (previous <> extra) position consumed
+        incremental more incrementalParser
+      else
+        throwError e
 
 ignored :: Parser Unit
 ignored = skipMany $ void space
@@ -108,7 +124,7 @@ parseOperators :: Unit -> Parser Expr
 parseOperators unit = do
   expr <- parseApplies unit
   operators <- many parseOperator
-  pure $ if null operators
+  pure $ if List.null operators
     then expr
     else OpExpr expr operators
 
