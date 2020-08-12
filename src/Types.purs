@@ -10,6 +10,8 @@ import Data.Tuple (Tuple(..))
 
 data Assoc = Left | Right
 
+data Op = Op Assoc BigInt Expr
+
 data Expr
   = IdentExpr String
   | IntExpr BigInt
@@ -30,6 +32,9 @@ data Ir
 instance showAssox :: Show Assoc where
   show Left = "left"
   show Right = "right"
+
+instance showOp :: Show Op where
+  show (Op assoc prec expr) = "Op " <> show assoc <> " " <> toString prec <> " " <> show expr
 
 instance showExpr :: Show Expr where
   show (IdentExpr name) = name

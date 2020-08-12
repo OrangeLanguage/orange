@@ -16,7 +16,7 @@ import Parse (runParseRepl)
 import Partial.Unsafe (unsafePartial)
 
 main :: Effect Unit
-main = unsafePartial $ case runParseRepl "infix right + 1 = 1" of
+main = unsafePartial $ case runParseRepl "def a = def b = def c = def add = def mul = def f = f(infix right + 1 = add, infix right * 2 = mul, a * b + c)" of
     Left error -> logShow error
     Right m -> case m of
       Nothing -> logShow "Nothing"
