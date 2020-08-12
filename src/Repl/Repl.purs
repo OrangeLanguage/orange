@@ -2,6 +2,7 @@ module Repl where
 
 import Prelude
 
+import Chalk (orange)
 import Control.Monad.Error.Class (class MonadError, catchError)
 import Data.Bifunctor (lmap)
 import Data.Char.Unicode (isSpace)
@@ -14,8 +15,6 @@ import Data.Tuple (Tuple(..))
 import Parse (incremental, parseRepl)
 import Text.Parsing.Parser (ParseError, ParserT, hoistParserT, runParserT)
 import Types (Expr)
-
-foreign import orange :: String -> String
 
 type ReplInput m s = m s
 
