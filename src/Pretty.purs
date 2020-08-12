@@ -7,9 +7,8 @@ import Data.BigInt (BigInt, toString)
 import Data.Foldable (intercalate)
 import Data.List (fold)
 import Data.Tuple (Tuple(..))
-import Partial.Unsafe (unsafePartial)
 import Prettier.Printer (DOC, pretty, text)
-import Types (Assoc(..), Expr(..))
+import Types (Assoc(..), Expr(..), Ir(..))
 
 assocDoc :: Assoc -> DOC
 assocDoc Left = text $ blue "left "
@@ -18,7 +17,7 @@ assocDoc Right = text $ blue "right "
 intDoc :: BigInt -> DOC
 intDoc int = text $ cyan $ toString int
 
-exprDoc :: Partial => Expr -> DOC
+exprDoc :: Expr -> DOC
 exprDoc (IdentExpr name) = text $ name
 exprDoc (IntExpr int) = intDoc int
 exprDoc (CharExpr char) = text $ green $ show char
@@ -30,4 +29,14 @@ exprDoc (InfixExpr assoc op int expr) = text (blue "infix ") <> assocDoc assoc <
 exprDoc (ExternExpr name) = text (blue "extern ") <> text name
 
 showExpr :: Int -> Expr -> String
-showExpr width expr = pretty width $ unsafePartial $ exprDoc expr
+showExpr width expr = pretty width $ exprDoc expr
+
+irDoc :: Ir -> DOC
+irDoc (IdentIr name) = text $ name
+irDoc (IntIr int) = intDoc int
+irDoc (CharIr char) = text $ green $ show char
+irDoc (StringIr string) = text $ green $ show string
+irDoc (ApplyIr ir args name cont) = irDoc ir <> text "(" <> (intercalate (text ", ") $ map irDoc args) <> text ") " <> text (blue name) <> text " -> " <> irDoc cont
+
+showIr :: Int -> Ir -> String
+showIr width ir = pretty width $ irDoc ir
