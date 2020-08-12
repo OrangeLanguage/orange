@@ -22,8 +22,8 @@ data Expr
 
 data Ir
   = IdentIr String
-  | CharIr Char
   | IntIr BigInt
+  | CharIr Char
   | StringIr String
   | ApplyIr Ir (List Ir) String Ir
 
