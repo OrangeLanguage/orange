@@ -55,4 +55,4 @@ instance replNodeRepl :: Repl Js.Error NodeRepl where
 evalNodeRepl :: forall a. NodeRepl a -> Effect Unit
 evalNodeRepl (NodeRepl n) = do
   interface <- createConsoleInterface noCompletion
-  runContT (runExceptT (runReaderT n interface)) $ either throwException (const $ pure unit)
+  runContT (runExceptT $ runReaderT n interface) $ either throwException (const $ pure unit)
