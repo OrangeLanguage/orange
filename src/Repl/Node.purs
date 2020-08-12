@@ -2,7 +2,7 @@ module Repl.Node where
 
 import Prelude
 
-import Compiler (compileCont, runCompiler)
+import Compiler (Compiler, compileCont, runCompiler)
 import Control.Monad.Cont (ContT(..), lift, runContT)
 import Control.Monad.Error.Class (class MonadThrow, throwError, try)
 import Control.Monad.Except (class MonadError, ExceptT, runExceptT)
@@ -19,6 +19,7 @@ import Effect.Exception (message, throwException)
 import Node.ReadLine (Interface, createConsoleInterface, noCompletion, question)
 import Pretty (showExpr, showIr)
 import Repl (class Repl, ReplCommand(..), ReplError(..))
+import Types (Expr, Ir)
 
 foreign import getCharImpl :: (forall a. a -> Maybe a) -> (forall a. Maybe a) -> Effect (Maybe String)
 
@@ -44,9 +45,12 @@ tryEffect eff = do
   result <- liftEffect $ try eff
   either throwError pure result
 
+compile :: Expr -> ContT Ir Compiler Ir
+compile expr = ContT $ compileCont expr
+
 instance replNodeRepl :: Repl Js.Error NodeRepl where
   error (Native err) = liftEffect $ log $ message err
-  error err = liftEffect $ logShow err
+  error err = logShow err
   query prompt = do
     iface <- ask
     NodeRepl $ lift $ lift $ ContT \cont -> question prompt cont iface

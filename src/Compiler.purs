@@ -2,25 +2,34 @@ module Compiler where
 
 import Prelude
 
-import Control.Monad.Error.Class (class MonadError)
+import Control.Monad.Error.Class (class MonadError, class MonadThrow)
 import Control.Monad.Except (Except, runExceptT, throwError)
-import Control.Monad.Reader (ReaderT, ask, local, runReaderT)
-import Control.Monad.State (StateT, evalStateT, get, put)
+import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, ask, local, runReaderT)
+import Control.Monad.State (class MonadState, StateT, evalStateT, get, put)
 import Data.BigInt (BigInt)
 import Data.Either (Either)
 import Data.List (List(..), (:))
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
-import Data.Newtype (unwrap)
+import Data.Newtype (class Newtype, unwrap)
 import Data.Set (Set)
 import Data.Set as Set
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
 import Types (Assoc(..), Expr(..), Ir(..), Op(..))
 
-type Compiler a = ReaderT Env (StateT Int (Except String)) a
+newtype Compiler a = Compiler (ReaderT Env (StateT Int (Except String)) a)
 
+derive instance newtypeCompiler :: Newtype (Compiler a) _
+derive newtype instance monadErrorCompiler :: MonadError String Compiler
+derive newtype instance applicativeCompiler :: Applicative Compiler
+derive newtype instance monadStateCompiler :: MonadState Int Compiler
+derive newtype instance monadThrowCompiler :: MonadThrow String Compiler
+derive newtype instance bindCompiler :: Bind Compiler
+derive newtype instance monadAskCompiler :: MonadAsk Env Compiler
+derive newtype instance monadReaderCompiler :: MonadReader Env Compiler
+ 
 data Env = Env (Set String) (Map String Op)
 
 insertGlobal :: String -> Env -> Env
@@ -84,4 +93,4 @@ runOp op@(Op assoc opPrec expr) (pop@(Op _ popPrec _) : ops) (right : left : exp
 runOp _ _ _ = throwError "Invalid operator state" 
 
 runCompiler :: forall a. Compiler a -> Either String a
-runCompiler compiler = unwrap $ runExceptT $ evalStateT (runReaderT compiler (Env Set.empty Map.empty)) 0
+runCompiler compiler = unwrap $ runExceptT $ evalStateT (runReaderT (unwrap compiler) (Env Set.empty Map.empty)) 0
