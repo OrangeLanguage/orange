@@ -2,7 +2,7 @@ module Repl where
 
 import Prelude
 
-import Chalk (orange)
+import Prettier.Printer (colorize)
 import Control.Monad.Error.Class (class MonadError, catchError)
 import Data.Bifunctor (lmap)
 import Data.Char.Unicode (isSpace)
@@ -36,7 +36,7 @@ more :: forall m e. Repl e m => m String
 more = query "       > " <#> append "\n"
 
 input :: forall m e. Repl e m => m String
-input = query (orange "orange" <> " > ")
+input = query (colorize "orange" "orange" <> " > ")
 
 parse :: forall m e. Repl e m => String -> m (Maybe Expr)
 parse line = do

@@ -52,8 +52,8 @@ instance replNodeRepl :: Repl Js.Error NodeRepl where
     NodeRepl $ lift $ lift $ ContT \cont -> question prompt cont iface
   run (Compile tree) = do
     let result = runCompiler $ compileCont tree pure
-    either logShow (log <<< showIr 20) result
-  run (Print tree) = log $ showExpr 20 tree
+    either logShow (log <<< showIr 40) result
+  run (Print tree) = log $ showExpr 40 tree
 
 evalNodeRepl :: forall a. NodeRepl a -> Effect Unit
 evalNodeRepl (NodeRepl n) = do

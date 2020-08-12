@@ -44,6 +44,7 @@ module Prettier.Printer
   , (<+>)
   , (</>)
   , (<+/>)
+  , colorize
   ) where
 
 import Prelude
@@ -56,11 +57,13 @@ import Data.String (Pattern(..))
 import Data.String as String
 import Data.Tuple (Tuple(..))
 
+foreign import colorize :: String -> String -> String
+
 data DOC
   = NIL
   | APPEND DOC DOC
   | NEST Int DOC
-  | TEXT String
+  | TEXT String String
   | LINE
   | UNION DOC DOC
 
@@ -75,7 +78,7 @@ instance monoidDOC :: Monoid DOC where
 
 data Doc
   = Nil
-  | Text String Doc
+  | Text String String Doc
   | Line Int Doc
 
 nil :: DOC
@@ -84,7 +87,7 @@ nil = NIL
 nest :: Int -> DOC -> DOC
 nest = NEST
 
-text :: String -> DOC
+text :: String -> String -> DOC
 text = TEXT
 
 line :: DOC
@@ -97,13 +100,13 @@ flatten :: DOC -> DOC
 flatten NIL = NIL
 flatten (APPEND x y) = flatten x :<> flatten y
 flatten (NEST i x) = NEST i $ flatten x
-flatten t@(TEXT _) = t
-flatten LINE = TEXT " "
+flatten t@(TEXT _ _) = t
+flatten LINE = TEXT "" " " 
 flatten (x :<|> y) = flatten x
 
 layout :: Doc -> String
 layout Nil = ""
-layout (Text s x) = s <> layout x
+layout (Text color s x) = colorize color s <> layout x
 layout (Line i x) = "\n" <> copy i " " <> layout x
 
 copy :: Int -> String -> String
@@ -117,7 +120,7 @@ be w k List.Nil = Nil
 be w k (Cons (Tuple i NIL) z) = be w k z
 be w k (Cons (Tuple i (APPEND x y)) z) = be w k $ (Tuple i x) : (Tuple i y) : z
 be w k (Cons (Tuple i (NEST j x)) z) = be w k  $ (Tuple (i + j) x) : z
-be w k (Cons (Tuple i (TEXT s)) z) = Text s $ be w (k + String.length s) z
+be w k (Cons (Tuple i (TEXT color s)) z) = Text color s $ be w (k + String.length s) z
 be w k (Cons (Tuple i LINE) z) = Line i $ be w i z
 be w k (Cons (Tuple i (UNION x y)) z) =
   let x' = be w k $ (Tuple i x) : z
@@ -126,7 +129,7 @@ be w k (Cons (Tuple i (UNION x y)) z) =
 fits :: Int -> Doc -> Boolean
 fits w x | w < 0 = false
 fits w Nil = true
-fits w (Text s x) = fits (w - String.length s) x
+fits w (Text color s x) = fits (w - String.length s) x
 fits w (Line i x) = true
 
 pretty :: Int -> DOC -> String
@@ -135,7 +138,7 @@ pretty w x = layout $ best w 0 x
 -- Utility functions
 
 beside :: DOC -> DOC -> DOC
-beside x y = x <> text " " <> y
+beside x y = x <> text "" " " <> y
 
 infixr 6 beside as <+>
 
@@ -156,13 +159,13 @@ stack :: List DOC -> DOC
 stack = folddoc (</>)
 
 bracket' :: Int -> String -> DOC -> String -> DOC
-bracket' i l x r = group $ text l <> nest i (line <> x) <> line <> text r
+bracket' i l x r = group $ text "" l <> nest i (line <> x) <> line <> text "" r
 
 bracket :: String -> DOC -> String -> DOC
 bracket = bracket' 2
 
 besideOrBelow :: DOC -> DOC -> DOC
-besideOrBelow x y = x <> (text " " :<|> line) <> y
+besideOrBelow x y = x <> (text "" " " :<|> line) <> y
 
 infixr 6 besideOrBelow as <+/>
 
@@ -170,7 +173,7 @@ words :: String -> List String
 words = List.fromFoldable <<< String.split (Pattern " ")
 
 fillwords :: String -> DOC
-fillwords = folddoc (<+/>) <<< map text <<< words
+fillwords = folddoc (<+/>) <<< map (text "") <<< words
 
 fill :: List DOC -> DOC
 fill List.Nil = nil
