@@ -2,12 +2,12 @@ module Pretty where
 
 import Prelude
 
-import Chalk (cyan, green, blue)
+import Chalk (blue, cyan, green, yellow)
 import Data.BigInt (BigInt, toString)
 import Data.Foldable (intercalate)
 import Data.List (fold)
 import Data.Tuple (Tuple(..))
-import Prettier.Printer (DOC, pretty, text)
+import Prettier.Printer (DOC, line, pretty, text)
 import Types (Assoc(..), Expr(..), Ir(..))
 
 assocDoc :: Assoc -> DOC
@@ -32,11 +32,11 @@ showExpr :: Int -> Expr -> String
 showExpr width expr = pretty width $ exprDoc expr
 
 irDoc :: Ir -> DOC
-irDoc (IdentIr name) = text $ name
+irDoc (IdentIr name) = text name
 irDoc (IntIr int) = intDoc int
 irDoc (CharIr char) = text $ green $ show char
 irDoc (StringIr string) = text $ green $ show string
-irDoc (ApplyIr ir args name cont) = irDoc ir <> text "(" <> (intercalate (text ", ") $ map irDoc args) <> text ") " <> text (blue name) <> text " -> " <> irDoc cont
+irDoc (ApplyIr ir args name cont) = irDoc ir <> text "(" <> (intercalate (text ", ") $ map irDoc args) <> text ") " <> text (yellow name) <> text " -> " <> line <> irDoc cont
 
 showIr :: Int -> Ir -> String
 showIr width ir = pretty width $ irDoc ir
