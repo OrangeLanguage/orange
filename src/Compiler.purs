@@ -2,6 +2,7 @@ module Compiler where
 
 import Prelude
 
+import Control.Monad.Error.Class (class MonadError)
 import Control.Monad.Except (Except, throwError)
 import Control.Monad.Reader (ReaderT, ask, local)
 import Control.Monad.State (StateT, get, put)
@@ -32,7 +33,7 @@ memberGlobal name (Env globals ops) = Set.member name globals
 lookupOp :: String -> Env -> Maybe Op
 lookupOp name (Env globals ops) = Map.lookup name ops
 
-compileCont :: Partial => Expr -> (Ir -> Compiler Ir) -> Compiler Ir
+compileCont :: Expr -> (Ir -> Compiler Ir) -> Compiler Ir
 compileCont (IdentExpr name) f = do
   env <- ask
   if memberGlobal name env
@@ -50,7 +51,7 @@ compileCont (ApplyExpr expr args) f = compileCont expr \e -> do
 compileCont (OpExpr expr operators) f = do
   env <- ask
   ops <- traverse (lookup env) operators
-  let apply = applyOps ops Nil (expr : Nil)
+  apply <- applyOps ops Nil (expr : Nil)
   compileCont apply f
     where
       lookup env (Tuple name e) = case lookupOp name env of
@@ -59,20 +60,22 @@ compileCont (OpExpr expr operators) f = do
 compileCont (DefExpr name expr) f = local (insertGlobal name) $ compileCont expr f
 compileCont (InfixExpr assoc name prec expr) f = local (insertOp assoc name prec expr) $ compileCont expr f
 
-compileConts :: Partial => List Expr -> (List Ir -> Compiler Ir) -> Compiler Ir
+compileConts :: List Expr -> (List Ir -> Compiler Ir) -> Compiler Ir
 compileConts Nil f = f Nil
 compileConts (car : cdr) f = compileCont car \carC -> compileConts cdr \c -> f (carC : c)
 
-applyOps :: Partial => List (Tuple Op Expr) -> List Op -> List Expr -> Expr
-applyOps Nil Nil (expr : Nil) = expr
+applyOps :: forall m. (MonadError String m) => List (Tuple Op Expr) -> List Op -> List Expr -> m Expr
+applyOps Nil Nil (expr : Nil) = pure expr
 applyOps Nil ((Op assoc proc expr) : ops) (right : left : exprs) = applyOps Nil ops ((ApplyExpr expr (left : right : Nil)) : exprs)
-applyOps ((Tuple op expr) : rest) ops exprs = 
-  let (Tuple ops' exprs') = runOp op ops exprs
-  in applyOps rest ops' (expr : exprs')
+applyOps ((Tuple op expr) : rest) ops exprs = do 
+  (Tuple ops' exprs') <- runOp op ops exprs
+  applyOps rest ops' (expr : exprs')
+applyOps _ _ _ = throwError "Invalid operator state" 
 
-runOp :: Partial => Op -> List Op -> List Expr -> (Tuple (List Op) (List Expr))
-runOp op Nil exprs = Tuple (op : Nil) exprs
+runOp :: forall m. (MonadError String m) => Op -> List Op -> List Expr -> m (Tuple (List Op) (List Expr))
+runOp op Nil exprs = pure $ Tuple (op : Nil) exprs
 runOp op@(Op assoc opPrec expr) (pop@(Op _ popPrec _) : ops) (right : left : exprs) =  
   if popPrec > opPrec || (popPrec == opPrec && assoc == Left)
   then runOp op ops ((ApplyExpr expr (left : right : Nil)) : exprs)
-  else Tuple (op : pop : ops) (left : right : exprs)
+  else pure $ Tuple (op : pop : ops) (left : right : exprs)
+runOp _ _ _ = throwError "Invalid operator state" 

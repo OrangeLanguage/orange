@@ -13,10 +13,9 @@ import Data.Map as Map
 import Effect (Effect)
 import Effect.Class.Console (logShow)
 import Parse (runParseRepl)
-import Partial.Unsafe (unsafePartial)
 
 main :: Effect Unit
-main = unsafePartial $ case runParseRepl "def a = def b = def c = def add = def f = f(infix left + 1 = add, a + b + c)" of
+main =  case runParseRepl "def a = def b = def c = def add = def f = f(infix left + 1 = add, a + b + c)" of
     Left error -> logShow error
     Right m -> case m of
       Nothing -> logShow "Nothing"
