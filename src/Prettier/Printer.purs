@@ -101,7 +101,7 @@ flatten NIL = NIL
 flatten (APPEND x y) = flatten x :<> flatten y
 flatten (NEST i x) = NEST i $ flatten x
 flatten t@(TEXT _ _) = t
-flatten LINE = TEXT "" " " 
+flatten LINE = TEXT "" "" 
 flatten (x :<|> y) = flatten x
 
 layout :: Doc -> String
