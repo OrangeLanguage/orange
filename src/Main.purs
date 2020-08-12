@@ -1,8 +1,6 @@
 module Main where
 
 import Prelude
-
-
 import Data.Array as Array
 import Effect (Effect)
 import Node.Process (argv)

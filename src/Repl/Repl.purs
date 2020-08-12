@@ -32,10 +32,10 @@ class MonadError e m <= Repl e m | m -> e where
   run :: ReplCommand -> m Unit
 
 more :: forall m e. Repl e m => m String
-more = query ".. " <#> append "\n"
+more = query "........ " <#> append "\n"
 
 input :: forall m e. Repl e m => m String
-input = query "> "
+input = query "orange > "
 
 parse :: forall m e. Repl e m => String -> m (Maybe Expr)
 parse line = do

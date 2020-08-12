@@ -8,31 +8,17 @@ import Control.Monad.Except (class MonadError, ExceptT, runExceptT)
 import Control.Monad.Maybe.Trans (MaybeT)
 import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, ask, runReaderT)
 import Control.Monad.State (class MonadState, StateT, evalStateT, get, modify, put)
-import Data.Array as Array
-import Data.Bifunctor (lmap)
-import Data.Either (Either(..), either)
-import Data.List (List(..))
-import Data.List as List
-import Data.Map (Map, union)
-import Data.Maybe (Maybe(..), maybe)
+import Data.Either (either)
+import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.String.CodeUnits as String
-import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Class.Console (log, logShow)
 import Effect.Exception (Error) as Js
 import Effect.Exception (message, throwException)
-import Node.Encoding (Encoding(..))
-import Node.FS.Sync (readTextFile)
-import Node.Path (FilePath)
-import Node.Process (stdout)
 import Node.ReadLine (Interface, createConsoleInterface, noCompletion, question)
-import Node.Stream as Stream
-import Partial.Unsafe (unsafePartial)
 import Repl (class Repl, ReplCommand(..), ReplError(..))
-import Repl as Repl
 
 foreign import getCharImpl :: (forall a. a -> Maybe a) -> (forall a. Maybe a) -> Effect (Maybe String)
 
