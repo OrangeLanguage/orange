@@ -2,6 +2,7 @@ module Repl.Node where
 
 import Prelude
 
+import Compiler (compileCont, runCompiler)
 import Control.Monad.Cont (ContT(..), lift, runContT)
 import Control.Monad.Error.Class (class MonadThrow, throwError, try)
 import Control.Monad.Except (class MonadError, ExceptT, runExceptT)
@@ -50,7 +51,8 @@ instance replNodeRepl :: Repl Js.Error NodeRepl where
     iface <- ask
     NodeRepl $ lift $ lift $ ContT \cont -> question prompt cont iface
   run (Compile tree) = do
-    pure unit
+    let result = runCompiler $ compileCont tree pure
+    either logShow logShow result
   run (Print tree) = log $ showExpr 20 tree
 
 evalNodeRepl :: forall a. NodeRepl a -> Effect Unit

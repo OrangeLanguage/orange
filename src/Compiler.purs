@@ -3,14 +3,16 @@ module Compiler where
 import Prelude
 
 import Control.Monad.Error.Class (class MonadError)
-import Control.Monad.Except (Except, throwError)
-import Control.Monad.Reader (ReaderT, ask, local)
-import Control.Monad.State (StateT, get, put)
+import Control.Monad.Except (Except, runExceptT, throwError)
+import Control.Monad.Reader (ReaderT, ask, local, runReaderT)
+import Control.Monad.State (StateT, evalStateT, get, put)
 import Data.BigInt (BigInt)
+import Data.Either (Either)
 import Data.List (List(..), (:))
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
+import Data.Newtype (unwrap)
 import Data.Set (Set)
 import Data.Set as Set
 import Data.Traversable (traverse)
@@ -80,3 +82,6 @@ runOp op@(Op assoc opPrec expr) (pop@(Op _ popPrec _) : ops) (right : left : exp
   then runOp op ops ((ApplyExpr expr (left : right : Nil)) : exprs)
   else pure $ Tuple (op : pop : ops) (left : right : exprs)
 runOp _ _ _ = throwError "Invalid operator state" 
+
+runCompiler :: forall a. Compiler a -> Either String a
+runCompiler compiler = unwrap $ runExceptT $ evalStateT (runReaderT compiler (Env Set.empty Map.empty)) 0
