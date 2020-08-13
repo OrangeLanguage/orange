@@ -26,6 +26,7 @@ exprDoc (CharExpr char) = text "green" $ show char
 exprDoc (StringExpr string) = text "green" $ show string
 exprDoc (ApplyExpr expr args) = exprDoc expr <> txt "(" <> (group $ nest 2 $ intercalate (txt ", ") $ map (exprDoc >>> ((<>) line)) args) <> txt ")"
 exprDoc (OpExpr expr ops) = exprDoc expr <> (fold $ map (\(Tuple name e) -> txt (" " <> name <> " ") <> exprDoc e) ops)
+exprDoc (BlockExpr exprs) = group $ txt "{" <> (nest 2 $ intercalate (txt "; ") $ map (exprDoc >>> ((<>) line)) exprs) <> line <> txt "}"
 exprDoc (DefExpr name expr) = text "blue" "def " <> txt (name <> " = ") <> exprDoc expr
 exprDoc (InfixExpr assoc op int expr) = text "blue" "infix " <> assocDoc assoc <> intDoc int <> txt (" " <> op <> " = ") <> exprDoc expr
 exprDoc (ExternExpr name) = text "blue" "extern " <> txt name
@@ -38,7 +39,8 @@ irDoc (IdentIr name) = txt name
 irDoc (IntIr int) = intDoc int
 irDoc (CharIr char) = text "green" $ show char
 irDoc (StringIr string) = text "green" $ show string
-irDoc (ApplyIr ir args name cont) = irDoc ir <> txt "(" <> (group $ nest 2 $ intercalate (txt ", ") $ map (irDoc >>> ((<>) line)) args) <> txt ") " <> text "yellow" name <> txt " -> " <> line <> irDoc cont
+irDoc (DefIr name expr cont) = text "blue" "def " <> txt (name <> " = ") <> irDoc expr <> text "blue" " in " <> line <> irDoc cont
+irDoc (ApplyIr ir args name cont) = text "blue" "let " <> txt (name <> " = ") <> irDoc ir <> txt "(" <> (group $ nest 2 $ intercalate (txt ", ") $ map (irDoc >>> ((<>) line)) args) <> txt ")" <> text "blue" " in " <> line <> irDoc cont
 
 showIr :: Int -> Ir -> String
 showIr width ir = pretty width $ group $ irDoc ir

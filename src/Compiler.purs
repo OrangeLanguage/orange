@@ -8,7 +8,7 @@ import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, ask, lo
 import Control.Monad.State (class MonadState, StateT, evalStateT, get, put)
 import Data.BigInt (BigInt)
 import Data.Either (Either)
-import Data.List (List(..), (:))
+import Data.List (List(..), last, (:))
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
@@ -71,7 +71,10 @@ compileCont (OpExpr expr operators) f = do
       lookup env (Tuple name e) = case lookupOp name env of
         Nothing -> throwError $ "Undefined " <> name
         Just op -> pure $ Tuple op e
-compileCont (DefExpr name expr) f = local (insertGlobal name) $ compileCont expr f
+compileCont (BlockExpr exprs) f = compileConts exprs \x -> case last x of
+  Nothing -> throwError $ "Empty block"
+  Just l -> pure l
+compileCont (DefExpr name expr) f = local (insertGlobal name) $ compileCont expr (\ir -> DefIr name ir <$> f ir)
 compileCont (InfixExpr assoc name prec expr) f = local (insertOp assoc name prec expr) $ compileCont expr f
 compileCont (ExternExpr name) f = local (insertGlobal name) (f $ IdentIr name)
 

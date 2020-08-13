@@ -110,7 +110,7 @@ parseApplies unit = do
 
 parseOp :: Parser String
 parseOp = do
-  name <- fromCharArray <$> Array.some (oneOf $ toCharArray "~`!@$%^&*-=+\\|;:<>.?")
+  name <- fromCharArray <$> Array.some (oneOf $ toCharArray "~`!@$%^&*-=+\\|:<>.?")
   ignored
   pure name
 
@@ -127,6 +127,15 @@ parseOperators unit = do
   pure $ if List.null operators
     then expr
     else OpExpr expr operators
+
+parseBlock :: Parser Expr
+parseBlock = do
+  void $ char '{'
+  ignored
+  exprs <- sepBy (parseExpr unit) (char ';' <* ignored)
+  void $ char '}'
+  ignored
+  pure $ BlockExpr exprs
 
 parseDef :: Parser Expr
 parseDef = do
@@ -162,7 +171,7 @@ parseExtern = do
   pure $ ExternExpr name
 
 parseExpr :: Unit -> Parser Expr
-parseExpr unit = parseDef <|> parseInfix <|> parseExtern <|> parseOperators unit
+parseExpr unit = parseBlock <|> parseDef <|> parseInfix <|> parseExtern <|> parseOperators unit
 
 parseRepl :: Parser (Maybe Expr)
 parseRepl = do
