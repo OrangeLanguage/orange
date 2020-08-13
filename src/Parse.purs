@@ -9,7 +9,7 @@ import Data.Array (foldl)
 import Data.Array as Array
 import Data.BigInt (BigInt, fromString)
 import Data.Either (Either)
-import Data.List (List, many)
+import Data.List (List, many, snoc)
 import Data.List (null) as List
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String.CodeUnits (fromCharArray, singleton, toCharArray)
@@ -100,7 +100,10 @@ parseApply = do
   args <- sepBy (parseExpr unit) (char ',' *> ignored)
   void $ char ')'
   ignored
-  pure args
+  last <- option Nothing $ Just <$> parseExpr unit
+  pure $ case last of
+    Nothing -> args
+    Just expr -> snoc args expr
 
 parseApplies :: Unit -> Parser Expr
 parseApplies unit = do
