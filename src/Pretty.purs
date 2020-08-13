@@ -27,14 +27,15 @@ exprDoc (StringExpr string) = text "green" $ show string
 exprDoc (ApplyExpr expr args) = exprDoc expr <> txt "(" <> (group $ nest 2 $ intercalate (txt ", ") $ map (exprDoc >>> ((<>) line)) args) <> txt ")"
 exprDoc (OpExpr expr ops) = exprDoc expr <> (fold $ map (\(Tuple name e) -> txt (" " <> name <> " ") <> exprDoc e) ops)
 exprDoc (BlockExpr exprs) = group $ txt "{" <> (nest 2 $ intercalate (txt "; ") $ map (exprDoc >>> ((<>) line)) exprs) <> line <> txt "}"
-exprDoc (LambdaExpr args expr) = intercalate (txt ", ") (map txt args) <> txt " -> " <> (group $ nest 2 $ line <> exprDoc expr)
+exprDoc (LambdaExpr args expr) = txt "\\" <> intercalate (txt ", ") (map txt args) <> txt " -> " <> (group $ nest 2 $ line <> exprDoc expr)
 exprDoc (DoExpr expr) = text "blue" "do " <> exprDoc expr
+exprDoc (HandleExpr expr cont) = text "blue" "handle " <> exprDoc expr <> text "blue" " with " <>  line <> exprDoc cont
 exprDoc (DefExpr name expr) = text "blue" "def " <> txt (name <> " = ") <> exprDoc expr
 exprDoc (InfixExpr assoc op int expr) = text "blue" "infix " <> assocDoc assoc <> intDoc int <> txt (" " <> op <> " = ") <> exprDoc expr
 exprDoc (ExternExpr name) = text "blue" "extern " <> txt name
 
 showExpr :: Int -> Expr -> String
-showExpr width expr = pretty width $ exprDoc expr
+showExpr width expr = pretty width $ group $ exprDoc expr
 
 irDoc :: Ir -> DOC
 irDoc (IdentIr name) = txt name
@@ -42,8 +43,9 @@ irDoc (IntIr int) = intDoc int
 irDoc (CharIr char) = text "green" $ show char
 irDoc (StringIr string) = text "green" $ show string
 irDoc (ApplyIr ir args) = irDoc ir <> txt "(" <> (group $ nest 2 $ intercalate (txt ", ") $ map (irDoc >>> ((<>) line)) args) <> txt ")"
-irDoc (LambdaIr args ir) = intercalate (txt ", ") (map txt args) <> txt " -> " <> (group $ nest 2 $ line <> irDoc ir)
+irDoc (LambdaIr args ir) = txt "\\" <> intercalate (txt ", ") (map txt args) <> txt " -> " <> (group $ nest 2 $ line <> irDoc ir)
 irDoc (DoIr ir name cont) = text "blue" "do " <> txt (name <> " = ") <> irDoc ir <> text "blue" " in " <> line <> irDoc cont
+irDoc (HandleIr ir cont) = text "blue" "handle " <> irDoc ir <> text "blue" " with " <> line <> irDoc cont
 irDoc (DefIr name ir cont) = text "blue" "def " <> txt (name <> " = ") <> irDoc ir <> text "blue" " in " <> line <> irDoc cont
 
 showIr :: Int -> Ir -> String

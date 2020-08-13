@@ -89,6 +89,9 @@ compileCont (DoExpr expr) f = do
   name <- fresh
   cont <- f $ IdentIr name
   compileCont expr (\ir -> pure $ DoIr ir name cont)
+compileCont (HandleExpr expr cont) f = do
+  ir <- compile expr
+  local (insertGlobal "resume") $ compileCont cont \contIr -> pure $ HandleIr ir contIr
 compileCont (DefExpr name expr) f = do 
   ir <- local (insertGlobal name) $ compile expr
   DefIr name ir <$> f (IdentIr name)

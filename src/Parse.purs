@@ -155,6 +155,14 @@ parseDo = do
   expr <- parseExpr unit
   pure $ DoExpr expr
 
+parseHandle :: Parser Expr
+parseHandle = do
+  void $ string "handle"
+  ignored
+  expr <- parseAtomic unit
+  cont <- parseExpr unit
+  pure $ HandleExpr expr cont
+
 parseDef :: Parser Expr
 parseDef = do
   void $ string "def"
@@ -189,7 +197,7 @@ parseExtern = do
   pure $ ExternExpr name
 
 parseExpr :: Unit -> Parser Expr
-parseExpr unit = parseBlock <|> parseDo <|> parseDef <|> parseInfix <|> parseExtern <|> try parseLambda <|> parseOperators unit
+parseExpr unit = parseBlock <|> parseDo <|> parseHandle <|> parseDef <|> parseInfix <|> parseExtern <|> try parseLambda <|> parseOperators unit
 
 parseRepl :: Parser (Maybe Expr)
 parseRepl = do

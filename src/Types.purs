@@ -20,6 +20,7 @@ data Expr
   | BlockExpr (List Expr)
   | LambdaExpr (List String) Expr
   | DoExpr Expr
+  | HandleExpr Expr Expr
   | DefExpr String Expr
   | InfixExpr Assoc String BigInt Expr
   | ExternExpr String
@@ -32,6 +33,7 @@ data Ir
   | ApplyIr Ir (List Ir)
   | LambdaIr (List String) Ir
   | DoIr Ir String Ir
+  | HandleIr Ir Ir
   | DefIr String Ir Ir
 
 derive instance eqAssoc :: Eq Assoc
