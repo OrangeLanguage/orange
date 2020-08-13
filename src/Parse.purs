@@ -112,7 +112,9 @@ parseOp :: Parser String
 parseOp = do
   name <- fromCharArray <$> Array.some (oneOf $ toCharArray "~`!@$%^&*-=+\\|:<>.?")
   ignored
-  pure name
+  if name == "->"
+    then fail "Reserved operator ->" 
+    else pure name
 
 parseOperator :: Parser (Tuple String Expr)
 parseOperator = do
@@ -136,6 +138,15 @@ parseBlock = do
   void $ char '}'
   ignored
   pure $ BlockExpr exprs
+
+parseLambda :: Parser Expr
+parseLambda = do
+  names <- sepBy parseIdent (char ',' <* ignored)
+  ignored
+  void $ string "->"
+  ignored
+  expr <- parseExpr unit
+  pure $ LambdaExpr names expr
 
 parseDef :: Parser Expr
 parseDef = do
@@ -171,7 +182,7 @@ parseExtern = do
   pure $ ExternExpr name
 
 parseExpr :: Unit -> Parser Expr
-parseExpr unit = parseBlock <|> parseDef <|> parseInfix <|> parseExtern <|> parseOperators unit
+parseExpr unit = parseBlock <|> try parseLambda <|> parseDef <|> parseInfix <|> parseExtern <|> parseOperators unit
 
 parseRepl :: Parser (Maybe Expr)
 parseRepl = do

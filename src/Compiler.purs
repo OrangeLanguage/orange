@@ -8,6 +8,7 @@ import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, ask, lo
 import Control.Monad.State (class MonadState, StateT, evalStateT, get, put)
 import Data.BigInt (BigInt)
 import Data.Either (Either)
+import Data.Foldable (foldr)
 import Data.List (List(..), last, (:))
 import Data.Map (Map)
 import Data.Map as Map
@@ -37,6 +38,9 @@ data Env = Env (Set String) (Map String Op)
 
 insertGlobal :: String -> Env -> Env
 insertGlobal name (Env globals ops) = Env (Set.insert name globals) ops
+
+insertGlobals :: List String -> Env -> Env
+insertGlobals names env = foldr insertGlobal env names
 
 insertOp :: Assoc -> String -> BigInt -> Expr -> Env -> Env
 insertOp assoc name prec expr (Env globals ops) = Env globals (Map.insert name (Op assoc prec expr) ops)
@@ -74,7 +78,12 @@ compileCont (OpExpr expr operators) f = do
 compileCont (BlockExpr exprs) f = compileConts exprs \x -> case last x of
   Nothing -> throwError $ "Empty block"
   Just l -> pure l
-compileCont (DefExpr name expr) f = local (insertGlobal name) $ compileCont expr (\ir -> DefIr name ir <$> f ir)
+compileCont (LambdaExpr names expr) f = do
+  ir <- local (insertGlobals names) $ compileCont expr pure
+  f $ LambdaIr names ir
+compileCont (DefExpr name expr) f = do 
+  ir <- local (insertGlobal name) $ compileCont expr pure
+  DefIr name ir <$> f (IdentIr name)
 compileCont (InfixExpr assoc name prec expr) f = local (insertOp assoc name prec expr) $ compileCont expr f
 compileCont (ExternExpr name) f = local (insertGlobal name) (f $ IdentIr name)
 
