@@ -51,6 +51,15 @@ memberGlobal name (Env globals ops) = Set.member name globals
 lookupOp :: String -> Env -> Maybe Op
 lookupOp name (Env globals ops) = Map.lookup name ops
 
+fresh :: Compiler String
+fresh = do
+  i <- get
+  put $ i + 1
+  pure $ show i
+
+compile :: Expr -> Compiler Ir
+compile expr = compileCont expr pure
+
 compileCont :: Expr -> (Ir -> Compiler Ir) -> Compiler Ir
 compileCont (IdentExpr name) f = do
   env <- ask
@@ -60,12 +69,7 @@ compileCont (IdentExpr name) f = do
 compileCont (IntExpr int) f = f $ IntIr int
 compileCont (CharExpr char) f = f $ CharIr char
 compileCont (StringExpr string) f = f $ StringIr string
-compileCont (ApplyExpr expr args) f = compileCont expr \e -> do
-  i <- get
-  put $ i + 1
-  let name = show i
-  cont <- f $ IdentIr name
-  compileConts args \a -> pure $ ApplyIr e a name cont
+compileCont (ApplyExpr expr args) f = compileCont expr \e -> compileConts args \a -> f $ ApplyIr e a 
 compileCont (OpExpr expr operators) f = do
   env <- ask
   ops <- traverse (lookup env) operators
@@ -79,10 +83,14 @@ compileCont (BlockExpr exprs) f = compileConts exprs \x -> case last x of
   Nothing -> throwError $ "Empty block"
   Just l -> pure l
 compileCont (LambdaExpr names expr) f = do
-  ir <- local (insertGlobals names) $ compileCont expr pure
+  ir <- local (insertGlobals names) $ compile expr
   f $ LambdaIr names ir
+compileCont (DoExpr expr) f = do
+  name <- fresh
+  cont <- f $ IdentIr name
+  compileCont expr (\ir -> pure $ DoIr ir name cont)
 compileCont (DefExpr name expr) f = do 
-  ir <- local (insertGlobal name) $ compileCont expr pure
+  ir <- local (insertGlobal name) $ compile expr
   DefIr name ir <$> f (IdentIr name)
 compileCont (InfixExpr assoc name prec expr) f = local (insertOp assoc name prec expr) $ compileCont expr f
 compileCont (ExternExpr name) f = local (insertGlobal name) (f $ IdentIr name)
