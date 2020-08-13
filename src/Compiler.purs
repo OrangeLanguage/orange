@@ -94,7 +94,7 @@ compileCont (HandleExpr expr cont) f = do
   local (insertGlobal "resume") $ compileCont cont \contIr -> pure $ HandleIr ir contIr
 compileCont (DefExpr name expr) f = do 
   ir <- local (insertGlobal name) $ compile expr
-  DefIr name ir <$> f (IdentIr name)
+  DefIr name ir <$> (local (insertGlobal name) $ f (IdentIr name))
 compileCont (InfixExpr assoc name prec expr) f = local (insertOp assoc name prec expr) $ compileCont expr f
 compileCont (ExternExpr name) f = local (insertGlobal name) (f $ IdentIr name)
 
