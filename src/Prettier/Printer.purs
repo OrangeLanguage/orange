@@ -38,6 +38,7 @@ module Prettier.Printer
   , spread
   , stack
   , text
+  , txt
   , words
   -- , (:<>)
   -- , (:<|>)
@@ -89,6 +90,9 @@ nest = NEST
 
 text :: String -> String -> DOC
 text = TEXT
+
+txt :: String -> DOC
+txt = text ""
 
 line :: DOC
 line = LINE

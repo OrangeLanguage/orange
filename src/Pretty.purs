@@ -6,11 +6,8 @@ import Data.BigInt (BigInt, toString)
 import Data.Foldable (intercalate)
 import Data.List (fold)
 import Data.Tuple (Tuple(..))
-import Prettier.Printer (DOC, group, line, nest, pretty, text)
+import Prettier.Printer (DOC, group, line, nest, pretty, text, txt)
 import Types (Assoc(..), Expr(..), Ir(..))
-
-txt :: String -> DOC
-txt = text ""
 
 assocDoc :: Assoc -> DOC
 assocDoc Left = text "blue" "left "

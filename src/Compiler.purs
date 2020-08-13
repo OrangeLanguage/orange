@@ -55,7 +55,7 @@ fresh :: Compiler String
 fresh = do
   i <- get
   put $ i + 1
-  pure $ show i
+  pure $ "_" <> show i
 
 compile :: Expr -> Compiler Ir
 compile expr = compileCont expr pure
@@ -81,7 +81,7 @@ compileCont (OpExpr expr operators) f = do
         Just op -> pure $ Tuple op e
 compileCont (BlockExpr exprs) f = compileConts exprs \x -> case last x of
   Nothing -> throwError $ "Empty block"
-  Just l -> pure l
+  Just l -> f l
 compileCont (LambdaExpr names expr) f = do
   ir <- local (insertGlobals names) $ compile expr
   f $ LambdaIr names ir
