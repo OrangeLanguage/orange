@@ -2,26 +2,26 @@ module Repl.Node where
 
 import Prelude
 
-import Compiler (Compiler, compileCont, runCompiler, runCompilerT)
+import Compiler (compileCont, runCompiler)
 import Control.Monad.Cont (ContT(..), lift, runContT)
 import Control.Monad.Error.Class (class MonadThrow, throwError, try)
 import Control.Monad.Except (class MonadError, ExceptT, runExceptT)
 import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, ask, runReaderT)
-import Control.Monad.State (class MonadState, StateT(..), evalStateT, gets, modify, modify_)
-import Data.Either (Either, either)
-import Data.List (List(..), singleton)
+import Control.Monad.State (class MonadState, StateT, evalStateT, gets, modify_)
+import Data.Either (either)
+import Data.List (List, singleton)
 import Data.Maybe (Maybe(..))
-import Data.Newtype (class Newtype, unwrap)
+import Data.Newtype (class Newtype)
 import Data.String.CodeUnits as String
 import Effect (Effect)
 import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Class.Console (log, logShow)
 import Effect.Exception (Error) as Js
-import Effect.Exception (error, message, throw, throwException)
+import Effect.Exception (error, message)
 import Node.ReadLine (Interface, createConsoleInterface, noCompletion, question)
 import Pretty (showExpr, showIr)
 import Repl (class Repl, ReplCommand(..), ReplError(..))
-import Types (Expr(..), Ir)
+import Types (Expr(..))
 
 foreign import getCharImpl :: (forall a. a -> Maybe a) -> (forall a. Maybe a) -> Effect (Maybe String)
 
