@@ -11,5 +11,3 @@ main :: Effect Unit
 main = do
   args <- argv <#> Array.drop 1
   NodeRepl.evalNodeRepl Repl.repl
-
-

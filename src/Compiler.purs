@@ -3,12 +3,13 @@ module Compiler where
 import Prelude
 
 import Control.Monad.Error.Class (class MonadError, class MonadThrow)
-import Control.Monad.Except (Except, runExceptT, throwError)
+import Control.Monad.Except (class MonadTrans, ExceptT, runExceptT, throwError)
 import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, ask, local, runReaderT)
 import Control.Monad.State (class MonadState, StateT, evalStateT, get, put)
 import Data.BigInt (BigInt)
 import Data.Either (Either)
 import Data.Foldable (foldr)
+import Data.Identity (Identity)
 import Data.List (List(..), last, (:))
 import Data.Map (Map)
 import Data.Map as Map
@@ -18,22 +19,31 @@ import Data.Set (Set)
 import Data.Set as Set
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
+import Effect.Class (class MonadEffect)
 import Types (Assoc(..), Expr(..), Ir(..), Op(..))
 
-newtype Compiler a = Compiler (ReaderT Env (StateT Int (Except String)) a)
+newtype CompilerT m a = CompilerT (ReaderT Env (StateT Int (ExceptT String m)) a)
+type Compiler a = CompilerT Identity a
 
-derive instance newtypeCompiler :: Newtype (Compiler a) _
-derive newtype instance monadErrorCompiler :: MonadError String Compiler
-derive newtype instance functorCompiler :: Functor Compiler
-derive newtype instance applyCompiler :: Apply Compiler
-derive newtype instance applicativeCompiler :: Applicative Compiler
-derive newtype instance monadCompiler :: Monad Compiler 
-derive newtype instance monadStateCompiler :: MonadState Int Compiler
-derive newtype instance monadThrowCompiler :: MonadThrow String Compiler
-derive newtype instance bindCompiler :: Bind Compiler
-derive newtype instance monadAskCompiler :: MonadAsk Env Compiler
-derive newtype instance monadReaderCompiler :: MonadReader Env Compiler
+derive instance newtypeCompiler :: Newtype (CompilerT m a) _
+derive newtype instance monadErrorCompiler :: Monad m => MonadError String (CompilerT m)
+derive newtype instance functorCompiler :: Functor m => Functor (CompilerT m)
+derive newtype instance applyCompiler :: Monad m => Apply (CompilerT m)
+derive newtype instance applicativeCompiler :: Monad m => Applicative (CompilerT m)
+derive newtype instance monadCompiler :: Monad m => Monad (CompilerT m) 
+derive newtype instance monadStateCompiler :: Monad m => MonadState Int (CompilerT m)
+derive newtype instance monadEffectCompiler :: MonadEffect m => MonadEffect (CompilerT m)
+derive newtype instance monadThrowCompiler :: Monad m => MonadThrow String (CompilerT m)
+derive newtype instance bindCompiler :: Monad m => Bind (CompilerT m)
+derive newtype instance monadAskCompiler :: Monad m => MonadAsk Env (CompilerT m)
+derive newtype instance monadReaderCompiler :: Monad m => MonadReader Env (CompilerT m)
  
+runCompilerT :: forall m a. Monad m => CompilerT m a -> m (Either String a)
+runCompilerT compiler = runExceptT $ evalStateT (runReaderT (unwrap compiler) (Env Set.empty Map.empty)) 0
+
+runCompiler :: forall a. Compiler a -> Either String a
+runCompiler compiler = unwrap $ runCompilerT compiler
+
 data Env = Env (Set String) (Map String Op)
 
 insertGlobal :: String -> Env -> Env
@@ -51,16 +61,16 @@ memberGlobal name (Env globals ops) = Set.member name globals
 lookupOp :: String -> Env -> Maybe Op
 lookupOp name (Env globals ops) = Map.lookup name ops
 
-fresh :: Compiler String
+fresh :: forall m. Monad m => CompilerT m String
 fresh = do
   i <- get
   put $ i + 1
   pure $ show i
 
-compile :: Expr -> Compiler Ir
+compile :: forall m. Monad m => Expr -> CompilerT m Ir
 compile expr = compileCont expr pure
 
-compileCont :: Expr -> (Ir -> Compiler Ir) -> Compiler Ir
+compileCont :: forall m. Monad m => Expr -> (Ir -> CompilerT m Ir) -> CompilerT m Ir
 compileCont (IdentExpr name) f = do
   env <- ask
   if memberGlobal name env
@@ -98,7 +108,7 @@ compileCont (DefExpr name expr) f = do
 compileCont (InfixExpr assoc name prec expr) f = local (insertOp assoc name prec expr) $ compileCont expr f
 compileCont (ExternExpr name) f = local (insertGlobal name) (f $ IdentIr name)
 
-compileConts :: List Expr -> (List Ir -> Compiler Ir) -> Compiler Ir
+compileConts :: forall m. Monad m => List Expr -> (List Ir -> CompilerT m Ir) -> CompilerT m Ir
 compileConts Nil f = f Nil
 compileConts (car : cdr) f = compileCont car \carC -> compileConts cdr \c -> f (carC : c)
 
@@ -117,6 +127,3 @@ runOp op@(Op assoc opPrec expr) (pop@(Op _ popPrec _) : ops) (right : left : exp
   then runOp op ops ((ApplyExpr expr (left : right : Nil)) : exprs)
   else pure $ Tuple (op : pop : ops) (left : right : exprs)
 runOp _ _ _ = throwError "Invalid operator state" 
-
-runCompiler :: forall a. Compiler a -> Either String a
-runCompiler compiler = unwrap $ runExceptT $ evalStateT (runReaderT (unwrap compiler) (Env Set.empty Map.empty)) 0
