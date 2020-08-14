@@ -19,7 +19,7 @@ import Text.Parsing.Parser (Parser) as P
 import Text.Parsing.Parser.Combinators (option, sepBy, skipMany, try)
 import Text.Parsing.Parser.String (class StringLike, char, eof, noneOf, oneOf, string, null)
 import Text.Parsing.Parser.Token (digit, letter, space)
-import Types (Assoc(..), Expr(..))
+import Types (Assoc(..), Expr(..), Type(..))
 
 type Parser a = P.Parser String a
 data ParsingError = ParsingError String ParseError
@@ -76,25 +76,72 @@ parseString = do
   ignored
   pure chars
 
-parseParens :: Parser Expr
-parseParens = do
+parseParens :: forall a. (Unit -> Parser a) -> Parser a
+parseParens parser = do
   void $ char '('
   ignored
-  expr <- parseExpr unit
+  a <- parser unit
   void $ char ')'
   ignored
-  pure expr
+  pure a
 
-parseAtomic :: Unit -> Parser Expr
-parseAtomic unit = 
+parseAtomicType :: Unit -> Parser Type
+parseAtomicType unit =
+  IdentType <$> parseIdent <|>
+  parseParens parseType
+
+parseApplyType :: Unit -> Parser Type
+parseApplyType unit = do
+  typ <- parseAtomicType unit
+  option typ $ do
+    void $ char '<'
+    ignored
+    types <- sepBy (parseType unit) (char ',' *> ignored)
+    void $ char '>'
+    ignored
+    pure $ if List.null types
+      then typ
+      else ApplyType typ types
+
+parseFuncTail :: Type -> Parser Type
+parseFuncTail typ = option typ $ do 
+  void $ char '('
+  ignored
+  args <- sepBy (parseType unit) (char ',' *> ignored)
+  void $ char ')'
+  ignored
+  parseFuncTail $ FuncType typ args
+
+parseFuncType :: Unit -> Parser Type
+parseFuncType unit = do
+  typ <- parseApplyType unit
+  parseFuncTail typ
+
+parseType :: Unit -> Parser Type
+parseType unit = parseFuncType unit
+
+parseTypedName :: Parser (Tuple String Type)
+parseTypedName = do
+  typ <- parseFuncType unit
+  name <- parseIdent
+  t <- parseFuncTail typ
+  pure $ Tuple name t
+
+parseMaybeTypedName :: Parser (Tuple String (Maybe Type))
+parseMaybeTypedName = 
+  try (parseTypedName <#> \(Tuple name typ) -> Tuple name $ Just typ) <|>
+  (parseIdent <#> \name -> Tuple name Nothing)
+
+parseAtomicExpr :: Unit -> Parser Expr
+parseAtomicExpr unit = 
   IdentExpr <$> parseIdent <|> 
   IntExpr <$> parseInt <|> 
   CharExpr <$> parseChar <|> 
   StringExpr <$> parseString <|> 
-  parseParens
+  parseParens parseExpr
 
-parseApply :: Parser (List Expr)
-parseApply = do 
+parseApplyExpr :: Parser (List Expr)
+parseApplyExpr = do 
   void $ char '('
   ignored
   args <- sepBy (parseExpr unit) (char ',' *> ignored)
@@ -107,8 +154,8 @@ parseApply = do
 
 parseApplies :: Unit -> Parser Expr
 parseApplies unit = do
-  expr <- parseAtomic unit
-  applies <- many parseApply
+  expr <- parseAtomicExpr unit
+  applies <- many parseApplyExpr
   pure $ foldl ApplyExpr expr applies
 
 parseOp :: Parser String
@@ -144,12 +191,15 @@ parseBlock = do
 
 parseLambda :: Parser Expr
 parseLambda = do
-  names <- sepBy parseIdent (char ',' <* ignored)
+  void $ char '('
+  ignored
+  args <- sepBy parseMaybeTypedName (char ',' <* ignored)
+  void $ char ')'
   ignored
   void $ string "->"
   ignored
   expr <- parseExpr unit
-  pure $ LambdaExpr names expr
+  pure $ LambdaExpr args expr
 
 parseDo :: Parser Expr
 parseDo = do
@@ -162,7 +212,7 @@ parseHandle :: Parser Expr
 parseHandle = do
   void $ string "handle"
   ignored
-  expr <- parseAtomic unit
+  expr <- parseAtomicExpr unit
   cont <- parseExpr unit
   pure $ HandleExpr expr cont
 
@@ -170,11 +220,11 @@ parseDef :: Parser Expr
 parseDef = do
   void $ string "def"
   ignored
-  name <- parseIdent
-  void $ string "="
+  (Tuple name typ) <- parseMaybeTypedName
+  void $ char '='
   ignored
   expr <- parseExpr unit
-  pure $ DefExpr name expr
+  pure $ DefExpr name typ expr
 
 parseAssoc :: Parser Assoc
 parseAssoc = string "left" *> pure Left <|> string "right" *> pure Right
@@ -196,8 +246,8 @@ parseExtern :: Parser Expr
 parseExtern = do
   void $ string "extern"
   ignored
-  name <- parseIdent
-  pure $ ExternExpr name
+  (Tuple name typ) <- parseTypedName
+  pure $ ExternExpr name typ
 
 parseExpr :: Unit -> Parser Expr
 parseExpr unit = parseBlock <|> parseDo <|> parseHandle <|> parseDef <|> parseInfix <|> parseExtern <|> try parseLambda <|> parseOperators unit
