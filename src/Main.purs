@@ -4,10 +4,9 @@ import Prelude
 import Data.Array as Array
 import Effect (Effect)
 import Node.Process (argv)
-import Repl (repl) as Repl
-import Repl.Node (evalNodeRepl) as NodeRepl
+import Repl (repl, evalNodeRepl) as Repl
 
 main :: Effect Unit
 main = do
   args <- argv <#> Array.drop 1
-  NodeRepl.evalNodeRepl Repl.repl
+  Repl.evalNodeRepl Repl.repl

@@ -3,7 +3,7 @@ module Compiler where
 import Prelude
 
 import Control.Monad.Error.Class (class MonadError, class MonadThrow)
-import Control.Monad.Except (class MonadTrans, ExceptT, runExceptT, throwError)
+import Control.Monad.Except (ExceptT, runExceptT, throwError)
 import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, ask, local, runReaderT)
 import Control.Monad.State (class MonadState, StateT, evalStateT, get, put)
 import Data.BigInt (BigInt)
