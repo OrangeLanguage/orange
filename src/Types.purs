@@ -4,6 +4,7 @@ import Prelude
 
 import Data.BigInt (BigInt)
 import Data.List (List)
+import Data.Maybe (Maybe)
 import Data.Tuple (Tuple(..))
 
 data Assoc = Left | Right
@@ -18,16 +19,16 @@ data Expr
   | ApplyExpr Expr (List Expr)
   | OpExpr Expr (List (Tuple String Expr))
   | BlockExpr (List Expr)
-  | LambdaExpr (List (Tuple String Type)) Expr
+  | LambdaExpr (List (Tuple String (Maybe Type))) Expr
   | DoExpr Expr
   | HandleExpr Expr Expr
-  | DefExpr String Type Expr
+  | DefExpr String (Maybe Type) Expr
   | InfixExpr Assoc String BigInt Expr
   | ExternExpr String Type
 
 data Type
-  = AnyType
-  | IdentType String
+  = IdentType String
+  | VarType String
   | ApplyType Type (List Type)
   | FuncType Type (List Type)
 

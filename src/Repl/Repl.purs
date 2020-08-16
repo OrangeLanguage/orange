@@ -28,7 +28,7 @@ import Parse (incremental, parseRepl)
 import Prettier.Printer (colorize)
 import Pretty (showExpr, showIr, showType)
 import Text.Parsing.Parser (ParseError, ParserT, hoistParserT, runParserT)
-import Types (Expr(..), Type(..))
+import Types (Expr(..))
 
 data ReplError e = Parse ParseError | Generic String | Native e
 
@@ -75,7 +75,7 @@ compile :: Expr -> NodeRepl Unit
 compile tree = do
   modify_ (\exprs -> exprs <> singleton tree)
   block <- gets BlockExpr
-  (Tuple ir typ) <- liftEffect $ either (error >>> throwError) pure $ runCompiler $ compileCont block AnyType (\ir typ -> pure $ Tuple ir typ)
+  (Tuple ir typ) <- liftEffect $ either (error >>> throwError) pure $ runCompiler $ compileCont block Nothing (\ir typ -> pure $ Tuple ir typ)
   log $ showIr 40 ir
   log $ showType 40 typ
 

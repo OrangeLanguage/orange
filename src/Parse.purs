@@ -127,10 +127,10 @@ parseTypedName = do
   t <- parseFuncTail typ
   pure $ Tuple name t
 
-parseMaybeTypedName :: Parser (Tuple String Type)
-parseMaybeTypedName = 
-  try (parseTypedName <#> \(Tuple name typ) -> Tuple name  typ) <|>
-  (parseIdent <#> \name -> Tuple name AnyType)
+parseMaybeTypedName :: Parser (Tuple String (Maybe Type))
+parseMaybeTypedName =
+  try (parseTypedName <#> \(Tuple name typ) -> Tuple name $ Just typ) <|>
+  (parseIdent <#> \name -> Tuple name Nothing)
 
 parseAtomicExpr :: Unit -> Parser Expr
 parseAtomicExpr unit = 

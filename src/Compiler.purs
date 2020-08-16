@@ -10,13 +10,14 @@ import Data.BigInt (BigInt)
 import Data.Either (Either)
 import Data.Foldable (foldr)
 import Data.Identity (Identity)
-import Data.List (List(..), last, (:))
+import Data.List (List(..), last, zip, (:))
 import Data.Map (Map, empty, insert, lookup)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Effect.Class (class MonadEffect)
+import Partial.Unsafe (unsafePartial)
 import Pretty (showType)
 import Types (Assoc(..), Expr(..), Ir(..), Op(..), Type(..))
 
@@ -63,9 +64,9 @@ fresh :: forall m. Monad m => CompilerT m String
 fresh = do
   i <- get
   put $ i + 1
-  pure $ "_" <> show i
+  pure $ show i
 
-compile :: forall m. Monad m => Expr -> Type -> CompilerT m (Tuple Ir Type)
+compile :: forall m. Monad m => Expr -> Maybe Type -> CompilerT m (Tuple Ir Type)
 compile expr expected = compileCont expr expected (\ir typ -> pure $ Tuple ir typ)
 
 unifyFunction :: forall m. Monad m => List Expr -> Type -> CompilerT m (Tuple Type (List (Tuple Expr Type)))
@@ -90,8 +91,8 @@ unifyList (car1 : cdr1) (car2 : cdr2) = do
 unifyList l1 l2 = throwError "Mismatched lists"
 
 unify :: forall m. Monad m => Type -> Type -> CompilerT m Type
-unify typ AnyType = pure typ
-unify AnyType typ = pure typ
+unify typ (VarType _) = pure typ
+unify (VarType _) typ = pure typ
 unify (IdentType n1) (IdentType n2) = if n1 == n2 
   then pure $ IdentType n1
   else throwError $ "Could not unify " <> n1 <> " and " <> n2
@@ -101,28 +102,33 @@ unify (FuncType r1 args1) (FuncType r2 args2) = do
   pure $ FuncType return args
 unify t1 t2 = throwError $ "Could not unify " <> showType 40 t1 <> " and " <> showType 40 t2
 
-compileCont :: forall m. Monad m => Expr -> Type -> (Ir -> Type -> CompilerT m (Tuple Ir Type)) -> CompilerT m (Tuple Ir Type)
+unifyMaybe :: forall m. Monad m => Type -> Maybe Type -> CompilerT m Type
+unifyMaybe typ Nothing = pure typ
+unifyMaybe typ (Just typ') = unify typ typ'
+
+compileCont :: forall m. Monad m => Expr -> Maybe Type -> (Ir -> Type -> CompilerT m (Tuple Ir Type)) -> CompilerT m (Tuple Ir Type)
 compileCont (IdentExpr name) expected f = do
   env <- ask
   case lookupGlobal name env of
     Nothing -> throwError $ "Undefined " <> name
     Just typ -> do
-      unifiedTyp <- unify typ expected
+      unifiedTyp <- unifyMaybe typ expected
       local (insertGlobal name unifiedTyp) $ f (IdentIr name) unifiedTyp
 compileCont (IntExpr int) expected f = do
-  typ <- unify (IdentType "int") expected
+  typ <- unifyMaybe (IdentType "int") expected
   f (IntIr int) typ
 compileCont (CharExpr char) expected f = do
-  typ <- unify (IdentType "char") expected
+  typ <- unifyMaybe (IdentType "char") expected
   f (CharIr char) typ
 compileCont (StringExpr string) expected f = do
-  typ <- unify (IdentType "string") expected
+  typ <- unifyMaybe (IdentType "string") expected
   f (StringIr string) typ
 compileCont (ApplyExpr expr args) expected f = 
-  compileConts (map (\e -> Tuple e AnyType) args) \irs -> 
-    compileCont expr (FuncType expected $ map snd irs) \ir typ -> do 
+  compileConts (map (\e -> Tuple e Nothing) args) \irs -> do 
+    i <- fresh
+    compileCont expr (Just $ FuncType (VarType i) $ map snd irs) \ir typ -> do 
       (Tuple return ts) <- unifyFunction args typ
-      compileConts ts \irs' -> f (ApplyIr ir (map fst irs')) return
+      compileConts (map (\(Tuple e t) -> Tuple e $ Just t) ts) \irs' -> f (ApplyIr ir (map fst irs')) return
 compileCont (OpExpr expr operators) expected f = do
   env <- ask
   ops <- traverse (lookup env) operators
@@ -132,34 +138,43 @@ compileCont (OpExpr expr operators) expected f = do
       lookup env (Tuple name e) = case lookupOp name env of
         Nothing -> throwError $ "Undefined " <> name
         Just op -> pure $ Tuple op e
-compileCont (BlockExpr exprs) expected f = compileConts (map (\expr -> Tuple expr AnyType) exprs) \x -> case last x of
+compileCont (BlockExpr exprs) expected f = compileConts (map (\expr -> Tuple expr Nothing) exprs) \x -> case last x of
   Nothing -> throwError $ "Empty block"
   Just (Tuple expr typ) -> f expr typ
 compileCont (LambdaExpr args expr) expected f = do
-  (Tuple ir typ) <- local (insertGlobals args) $ compileCont expr AnyType \ir typ -> do
+  argTyps <- traverse (\(Tuple name maybeTyp) -> case maybeTyp of 
+    Nothing -> Tuple name <$> VarType <$> fresh
+    Just typ -> pure $ Tuple name typ) args
+  name <- fresh
+  (Tuple returnTyp unifiedArgTyps) <- unsafePartial $ do 
+    (FuncType r as) <- unifyMaybe (FuncType (VarType name) (map snd argTyps)) expected
+    pure $ Tuple r as
+  (Tuple ir typ) <- local (insertGlobals $ zip (map fst argTyps) unifiedArgTyps) $ compileCont expr (Just returnTyp) \ir typ -> do
     types <- traverse (\(Tuple arg t) -> snd <$> compile (IdentExpr arg) t) args
     pure $ Tuple ir (FuncType typ types)
   f (LambdaIr (map fst args) ir) typ
 compileCont (DoExpr expr) expected f = do
-  name <- fresh
-  (Tuple cont contType) <- f (IdentIr name) expected
-  compileCont expr AnyType (\ir typ -> pure $ Tuple (DoIr ir name cont) contType)
-compileCont (HandleExpr expr cont) expected f = do
+  name <- (<>) "_" <$> fresh
+  (Tuple cont contType) <- f (IdentIr name) (VarType name)
+  compileCont expr Nothing (\ir typ -> pure $ Tuple (DoIr ir name cont) contType)
+compileCont (HandleExpr expr cont) expected f = dov
   (Tuple ir irTyp) <- compile expr expected
   (Tuple contIr contTyp) <- compile cont expected
   f (HandleIr ir contIr) contTyp
-compileCont (DefExpr name typ expr) expected f = do
-  unifiedTyp <- unify expected typ
-  (Tuple ir irTyp) <- local (insertGlobal name unifiedTyp) $ compile expr unifiedTyp
+compileCont (DefExpr name maybeTyp expr) expected f = do
+  unifiedTyp <- case maybeTyp of
+    Nothing -> VarType <$> fresh
+    Just typ -> unifyMaybe typ expected
+  (Tuple ir irTyp) <- local (insertGlobal name unifiedTyp) $ compile expr $ Just unifiedTyp
   unifiedIrTyp <- unify unifiedTyp irTyp
   (Tuple cont contTyp) <- local (insertGlobal name unifiedIrTyp) $ f (IdentIr name) unifiedIrTyp
   pure $ Tuple (DefIr name ir cont) contTyp
 compileCont (InfixExpr assoc name prec expr) expected f = local (insertOp assoc name prec expr) $ compileCont expr expected f
 compileCont (ExternExpr name typ) expected f = do
-  unifiedTyp <- unify expected typ 
+  unifiedTyp <- unifyMaybe typ expected
   local (insertGlobal name typ) $ f (IdentIr name) unifiedTyp
 
-compileConts :: forall m. Monad m => List (Tuple Expr Type) -> (List (Tuple Ir Type) -> CompilerT m (Tuple Ir Type)) -> CompilerT m (Tuple Ir Type)
+compileConts :: forall m. Monad m => List (Tuple Expr (Maybe Type)) -> (List (Tuple Ir Type) -> CompilerT m (Tuple Ir Type)) -> CompilerT m (Tuple Ir Type)
 compileConts Nil f = f Nil
 compileConts ((Tuple expr typ) : cdr) f = 
   compileCont expr typ \carIr carTyp -> 

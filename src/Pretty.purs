@@ -5,6 +5,7 @@ import Prelude
 import Data.BigInt (BigInt, toString)
 import Data.Foldable (intercalate)
 import Data.List (fold)
+import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..), uncurry)
 import Prettier.Printer (DOC, group, line, nest, pretty, text, txt)
 import Types (Assoc(..), Expr(..), Ir(..), Type(..))
@@ -17,16 +18,17 @@ intDoc :: BigInt -> DOC
 intDoc int = text "cyan" $ toString int
 
 typeDoc :: Type -> DOC
-typeDoc AnyType = text "blue" "any"
 typeDoc (IdentType typ) = txt typ
+typeDoc (VarType var) = txt var
 typeDoc (ApplyType typ args) = typeDoc typ <> txt "<" <> (group $ nest 2 $ intercalate (txt ", ") $ map (typeDoc >>> ((<>) line)) args) <> txt ">"
 typeDoc (FuncType return args) = txt "(" <> (group $ nest 2 $ intercalate (txt ", ") $ map (typeDoc >>> ((<>) line)) args) <> txt ") -> " <> line <> typeDoc return
 
 showType :: Int -> Type -> String
 showType width typ = pretty width $ group $ typeDoc typ
 
-withTypeDoc :: String -> Type -> DOC
-withTypeDoc name typ = txt name <> group (nest 2 $ line <> txt ": " <> typeDoc typ)
+withTypeDoc :: String -> Maybe Type -> DOC
+withTypeDoc name Nothing = txt name
+withTypeDoc name (Just typ) = txt name <> group (nest 2 $ line <> txt ": " <> typeDoc typ)
 
 exprDoc :: Expr -> DOC
 exprDoc (IdentExpr name) = txt name
