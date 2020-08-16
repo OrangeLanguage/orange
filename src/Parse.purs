@@ -127,10 +127,10 @@ parseTypedName = do
   t <- parseFuncTail typ
   pure $ Tuple name t
 
-parseMaybeTypedName :: Parser (Tuple String (Maybe Type))
+parseMaybeTypedName :: Parser (Tuple String Type)
 parseMaybeTypedName = 
-  try (parseTypedName <#> \(Tuple name typ) -> Tuple name $ Just typ) <|>
-  (parseIdent <#> \name -> Tuple name Nothing)
+  try (parseTypedName <#> \(Tuple name typ) -> Tuple name  typ) <|>
+  (parseIdent <#> \name -> Tuple name AnyType)
 
 parseAtomicExpr :: Unit -> Parser Expr
 parseAtomicExpr unit = 
@@ -147,7 +147,7 @@ parseApplyExpr = do
   args <- sepBy (parseExpr unit) (char ',' *> ignored)
   void $ char ')'
   ignored
-  last <- option Nothing $ Just <$> parseExpr unit
+  last <- option Nothing $ Just <$> parseBlock
   pure $ case last of
     Nothing -> args
     Just expr -> snoc args expr

@@ -26,9 +26,9 @@ import Effect.Exception (error, message)
 import Node.ReadLine (Interface, createConsoleInterface, noCompletion, question)
 import Parse (incremental, parseRepl)
 import Prettier.Printer (colorize)
-import Pretty (showExpr, showIr)
+import Pretty (showExpr, showIr, showType)
 import Text.Parsing.Parser (ParseError, ParserT, hoistParserT, runParserT)
-import Types (Expr(..))
+import Types (Expr(..), Type(..))
 
 data ReplError e = Parse ParseError | Generic String | Native e
 
@@ -75,8 +75,9 @@ compile :: Expr -> NodeRepl Unit
 compile tree = do
   modify_ (\exprs -> exprs <> singleton tree)
   block <- gets BlockExpr
-  ir <- liftEffect $ either (error >>> throwError) pure $ runCompiler $ compileCont block pure
+  (Tuple ir typ) <- liftEffect $ either (error >>> throwError) pure $ runCompiler $ compileCont block AnyType (\ir typ -> pure $ Tuple ir typ)
   log $ showIr 40 ir
+  log $ showType 40 typ
 
 print :: Expr -> NodeRepl Unit
 print tree = log $ showExpr 40 tree

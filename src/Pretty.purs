@@ -5,9 +5,8 @@ import Prelude
 import Data.BigInt (BigInt, toString)
 import Data.Foldable (intercalate)
 import Data.List (fold)
-import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..), uncurry)
-import Prettier.Printer (DOC, group, line, nest, pretty, text, txt)
+import Prettier.Printer (DOC, group, layout, line, nest, pretty, text, txt)
 import Types (Assoc(..), Expr(..), Ir(..), Type(..))
 
 assocDoc :: Assoc -> DOC
@@ -18,13 +17,16 @@ intDoc :: BigInt -> DOC
 intDoc int = text "cyan" $ toString int
 
 typeDoc :: Type -> DOC
+typeDoc AnyType = text "blue" "any"
 typeDoc (IdentType typ) = txt typ
 typeDoc (ApplyType typ args) = typeDoc typ <> txt "<" <> (group $ nest 2 $ intercalate (txt ", ") $ map (typeDoc >>> ((<>) line)) args) <> txt ">"
 typeDoc (FuncType return args) = txt "(" <> (group $ nest 2 $ intercalate (txt ", ") $ map (typeDoc >>> ((<>) line)) args) <> txt ") -> " <> line <> typeDoc return
 
-maybeTypeDoc :: String -> Maybe Type -> DOC
-maybeTypeDoc name Nothing = txt name
-maybeTypeDoc name (Just typ) = txt name <> group (nest 2 $ line <> txt ": " <> typeDoc typ)
+showType :: Int -> Type -> String
+showType width typ = pretty width $ group $ typeDoc typ
+
+withTypeDoc :: String -> Type -> DOC
+withTypeDoc name typ = txt name <> group (nest 2 $ line <> txt ": " <> typeDoc typ)
 
 exprDoc :: Expr -> DOC
 exprDoc (IdentExpr name) = txt name
@@ -46,7 +48,7 @@ exprDoc (BlockExpr exprs) =
   txt "}"
 exprDoc (LambdaExpr args expr) = 
   txt "\\" <> 
-  group (nest 2 $ intercalate (txt ", ") (map (uncurry maybeTypeDoc >>> ((<>) line)) args)) <> 
+  group (nest 2 $ intercalate (txt ", ") (map (uncurry withTypeDoc >>> ((<>) line)) args)) <> 
   txt " -> " <> 
   group (nest 2 $ line <> exprDoc expr)
 exprDoc (DoExpr expr) = 
@@ -60,8 +62,7 @@ exprDoc (HandleExpr expr cont) =
   exprDoc cont
 exprDoc (DefExpr name typ expr) = 
   text "blue" "def " <> 
-  txt name <> 
-  maybeTypeDoc name typ <> 
+  withTypeDoc name typ <> 
   txt " = " <> 
   nest 2 (line <> exprDoc expr)
 exprDoc (InfixExpr assoc op int expr) = 

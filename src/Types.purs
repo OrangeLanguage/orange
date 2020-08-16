@@ -19,15 +19,16 @@ data Expr
   | ApplyExpr Expr (List Expr)
   | OpExpr Expr (List (Tuple String Expr))
   | BlockExpr (List Expr)
-  | LambdaExpr (List (Tuple String (Maybe Type))) Expr
+  | LambdaExpr (List (Tuple String Type)) Expr
   | DoExpr Expr
   | HandleExpr Expr Expr
-  | DefExpr String (Maybe Type) Expr
+  | DefExpr String Type Expr
   | InfixExpr Assoc String BigInt Expr
   | ExternExpr String Type
 
 data Type
-  = IdentType String
+  = AnyType
+  | IdentType String
   | ApplyType Type (List Type)
   | FuncType Type (List Type)
 
