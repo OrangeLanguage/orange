@@ -157,7 +157,7 @@ compileCont (DoExpr expr) expected f = do
   name <- (<>) "_" <$> fresh
   (Tuple cont contType) <- f (IdentIr name) (VarType name)
   compileCont expr Nothing (\ir typ -> pure $ Tuple (DoIr ir name cont) contType)
-compileCont (HandleExpr expr cont) expected f = dov
+compileCont (HandleExpr expr cont) expected f = do
   (Tuple ir irTyp) <- compile expr expected
   (Tuple contIr contTyp) <- compile cont expected
   f (HandleIr ir contIr) contTyp
