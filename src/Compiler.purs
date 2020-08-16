@@ -122,7 +122,7 @@ compileCont (ApplyExpr expr args) expected f =
   compileConts (map (\e -> Tuple e AnyType) args) \irs -> 
     compileCont expr (FuncType expected $ map snd irs) \ir typ -> do 
       (Tuple return ts) <- unifyFunction args typ
-      compileConts ts \irs -> f (ApplyIr ir (map fst irs)) return
+      compileConts ts \irs' -> f (ApplyIr ir (map fst irs')) return
 compileCont (OpExpr expr operators) expected f = do
   env <- ask
   ops <- traverse (lookup env) operators

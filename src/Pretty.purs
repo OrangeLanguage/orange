@@ -6,7 +6,7 @@ import Data.BigInt (BigInt, toString)
 import Data.Foldable (intercalate)
 import Data.List (fold)
 import Data.Tuple (Tuple(..), uncurry)
-import Prettier.Printer (DOC, group, layout, line, nest, pretty, text, txt)
+import Prettier.Printer (DOC, group, line, nest, pretty, text, txt)
 import Types (Assoc(..), Expr(..), Ir(..), Type(..))
 
 assocDoc :: Assoc -> DOC
