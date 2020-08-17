@@ -2,7 +2,8 @@ module Repl where
 
 import Prelude
 
-import Compiler (compileCont, runCompiler)
+import Compiler (Env(..))
+import Compiler as Compiler
 import Control.Monad.Cont (ContT(..), runContT)
 import Control.Monad.Error.Class (class MonadError, class MonadThrow, throwError)
 import Control.Monad.Except (ExceptT, runExceptT)
@@ -12,6 +13,7 @@ import Data.Bifunctor (lmap)
 import Data.Char.Unicode (isSpace)
 import Data.Either (Either, either)
 import Data.List (List, singleton)
+import Data.Map (empty)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.String (drop, length)
@@ -75,7 +77,7 @@ compile :: Expr -> NodeRepl Unit
 compile tree = do
   modify_ (\exprs -> exprs <> singleton tree)
   block <- gets BlockExpr
-  (Tuple ir typ) <- liftEffect $ either (error >>> throwError) pure $ runCompiler $ compileCont block Nothing (\ir typ -> pure $ Tuple ir typ)
+  (Tuple ir typ) <- liftEffect $ either (error >>> throwError) pure $ Compiler.runCompiler (Compiler.compile block Nothing) $ Env 0 empty empty
   log $ showIr 40 ir
   log $ showType 40 typ
 

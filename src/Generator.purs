@@ -3,7 +3,7 @@ module Generator where
 import Prelude
 
 import Data.BigInt (toString)
-import Data.List (intercalate, (:))
+import Data.List (fold, intercalate, (:))
 import Prettier.Printer (DOC, group, line, nest, pretty, txt)
 import Types (Ir(..))
 
@@ -15,8 +15,12 @@ generateDoc (StringIr string) = txt $ show string
 generateDoc (ApplyIr ir args) =
   generateDoc ir <> 
   txt "(" <> 
-  intercalate (txt ", ") (txt "_handle" : (map generateDoc args)) <> 
+  intercalate (txt ", ") (txt "_handle" : map generateDoc args) <> 
   txt ")"
+generateDoc (BlockIr irs) =
+  txt "{" <>
+  fold (map (\ir -> generateDoc ir <> txt ";" <> line) irs) <>
+  txt "}"
 generateDoc (LambdaIr args ir) = 
   txt "function _(" <> 
   intercalate (txt ", ") (txt "_handle" : (map txt args)) <> 
@@ -28,19 +32,10 @@ generateDoc (LambdaIr args ir) =
     txt ";") <>
   line <>
   txt "}"
-generateDoc (DoIr ir name cont) =
+generateDoc (DoIr ir) =
   txt "_handle(" <>
   generateDoc ir <>
-  txt ", function _(_handle, " <>
-  txt name <>
-  txt ") {" <>
-  nest 2 (
-    line <>
-    txt "return " <>
-    generateDoc cont <>
-    txt ";") <>
-  line <>
-  txt "})"
+  txt ")"
 generateDoc (HandleIr ir cont) =
   txt "function _(_handle) {" <>
   nest 2 (
@@ -57,21 +52,12 @@ generateDoc (HandleIr ir cont) =
     txt "(_handle, _do);") <>
   line <>
   txt "})"
-generateDoc (DefIr name ir cont) =
-  txt "function _() {" <>
-  nest 2 (
-    line <>
-    txt "const " <>
-    txt name <>
-    txt " = " <>
-    generateDoc ir <>
-    txt ";" <>
-    line <>
-    txt "return " <>
-    generateDoc cont <>
-    txt ";") <>
-  line <>
-  txt "}()"
+generateDoc (DefIr name ir) =
+  txt "const " <>
+  txt name <>
+  txt " = " <>
+  generateDoc ir <>
+  txt ";"
 
 generate :: Int -> Ir -> String
 generate width ir = pretty width $ group $ generateDoc ir

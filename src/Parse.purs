@@ -227,7 +227,7 @@ parseDef = do
   pure $ DefExpr name typ expr
 
 parseAssoc :: Parser Assoc
-parseAssoc = string "left" *> pure Left <|> string "right" *> pure Right
+parseAssoc = string "left" *> pure LeftAssoc <|> string "right" *> pure RightAssoc
 
 parseInfix :: Parser Expr
 parseInfix = do

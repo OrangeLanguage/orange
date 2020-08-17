@@ -4,14 +4,13 @@ import Prelude
 
 import Control.Monad.Error.Class (class MonadError, class MonadThrow)
 import Control.Monad.Except (ExceptT, runExceptT, throwError)
-import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, ask, local, runReaderT)
-import Control.Monad.State (class MonadState, StateT, evalStateT, get, put)
+import Control.Monad.State (class MonadState, StateT, evalStateT, get, modify, put)
 import Data.BigInt (BigInt)
 import Data.Either (Either)
 import Data.Foldable (foldr)
 import Data.Identity (Identity)
 import Data.List (List(..), last, zip, (:))
-import Data.Map (Map, empty, insert, lookup)
+import Data.Map (Map, insert, lookup)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Traversable (traverse)
@@ -21,7 +20,7 @@ import Partial.Unsafe (unsafePartial)
 import Pretty (showType)
 import Types (Assoc(..), Expr(..), Ir(..), Op(..), Type(..))
 
-newtype CompilerT m a = CompilerT (ReaderT Env (StateT Int (ExceptT String m)) a)
+newtype CompilerT m a = CompilerT (StateT Env (ExceptT String m) a)
 type Compiler a = CompilerT Identity a
 
 derive instance newtypeCompiler :: Newtype (CompilerT m a) _
@@ -30,44 +29,39 @@ derive newtype instance functorCompiler :: Functor m => Functor (CompilerT m)
 derive newtype instance applyCompiler :: Monad m => Apply (CompilerT m)
 derive newtype instance applicativeCompiler :: Monad m => Applicative (CompilerT m)
 derive newtype instance monadCompiler :: Monad m => Monad (CompilerT m) 
-derive newtype instance monadStateCompiler :: Monad m => MonadState Int (CompilerT m)
+derive newtype instance monadStateCompiler :: Monad m => MonadState Env (CompilerT m)
 derive newtype instance monadEffectCompiler :: MonadEffect m => MonadEffect (CompilerT m)
 derive newtype instance monadThrowCompiler :: Monad m => MonadThrow String (CompilerT m)
 derive newtype instance bindCompiler :: Monad m => Bind (CompilerT m)
-derive newtype instance monadAskCompiler :: Monad m => MonadAsk Env (CompilerT m)
-derive newtype instance monadReaderCompiler :: Monad m => MonadReader Env (CompilerT m)
 
-runCompilerT :: forall m a. Monad m => CompilerT m a -> m (Either String a)
-runCompilerT compiler = runExceptT $ evalStateT (runReaderT (unwrap compiler) (Env empty empty)) 0
+runCompilerT :: forall m a. Monad m => CompilerT m a -> Env -> m (Either String a)
+runCompilerT compiler env = runExceptT $ evalStateT (unwrap compiler) env
 
-runCompiler :: forall a. Compiler a -> Either String a
-runCompiler compiler = unwrap $ runCompilerT compiler
+runCompiler :: forall a. Compiler a -> Env -> Either String a
+runCompiler compiler env = unwrap $ runCompilerT compiler env
 
-data Env = Env (Map String Type) (Map String Op)
+data Env = Env Int (Map String Type) (Map String Op)
 
 insertGlobal :: String -> Type -> Env -> Env
-insertGlobal name typ (Env globals ops) = Env (insert name typ globals) ops
+insertGlobal name typ (Env i globals ops) = Env i (insert name typ globals) ops
 
 insertGlobals :: List (Tuple String Type) -> Env -> Env
 insertGlobals names env = foldr (uncurry insertGlobal) env names
 
 insertOp :: Assoc -> String -> BigInt -> Expr -> Env -> Env
-insertOp assoc name prec expr (Env globals ops) = Env globals (insert name (Op assoc prec expr) ops)
+insertOp assoc name prec expr (Env i globals ops) = Env i globals (insert name (Op assoc prec expr) ops)
 
 lookupGlobal :: String -> Env -> Maybe Type
-lookupGlobal name (Env globals ops) = lookup name globals
+lookupGlobal name (Env i globals ops) = lookup name globals
 
 lookupOp :: String -> Env -> Maybe Op
-lookupOp name (Env globals ops) = lookup name ops
+lookupOp name (Env i globals ops) = lookup name ops
 
 fresh :: forall m. Monad m => CompilerT m String
 fresh = do
-  i <- get
-  put $ i + 1
+  (Env i globals ops) <- get
+  put $ Env (i + 1) globals ops
   pure $ show i
-
-compile :: forall m. Monad m => Expr -> Maybe Type -> CompilerT m (Tuple Ir Type)
-compile expr expected = compileCont expr expected (\ir typ -> pure $ Tuple ir typ)
 
 unifyFunction :: forall m. Monad m => List Expr -> Type -> CompilerT m (Tuple Type (List (Tuple Expr Type)))
 unifyFunction exprs (FuncType return args) = do
@@ -106,42 +100,45 @@ unifyMaybe :: forall m. Monad m => Type -> Maybe Type -> CompilerT m Type
 unifyMaybe typ Nothing = pure typ
 unifyMaybe typ (Just typ') = unify typ typ'
 
-compileCont :: forall m. Monad m => Expr -> Maybe Type -> (Ir -> Type -> CompilerT m (Tuple Ir Type)) -> CompilerT m (Tuple Ir Type)
-compileCont (IdentExpr name) expected f = do
-  env <- ask
+compile :: forall m. Monad m => Expr -> Maybe Type -> CompilerT m (Tuple Ir Type)
+compile (IdentExpr name) expected = do
+  env <- get
   case lookupGlobal name env of
     Nothing -> throwError $ "Undefined " <> name
     Just typ -> do
       unifiedTyp <- unifyMaybe typ expected
-      local (insertGlobal name unifiedTyp) $ f (IdentIr name) unifiedTyp
-compileCont (IntExpr int) expected f = do
+      void $ modify $ insertGlobal name unifiedTyp
+      pure $ Tuple (IdentIr name) unifiedTyp
+compile (IntExpr int) expected = do
   typ <- unifyMaybe (IdentType "int") expected
-  f (IntIr int) typ
-compileCont (CharExpr char) expected f = do
+  pure $ Tuple (IntIr int) typ
+compile (CharExpr char) expected = do
   typ <- unifyMaybe (IdentType "char") expected
-  f (CharIr char) typ
-compileCont (StringExpr string) expected f = do
+  pure $ Tuple (CharIr char) typ
+compile (StringExpr string) expected = do
   typ <- unifyMaybe (IdentType "string") expected
-  f (StringIr string) typ
-compileCont (ApplyExpr expr args) expected f = 
-  compileConts (map (\e -> Tuple e Nothing) args) \irs -> do 
-    i <- fresh
-    compileCont expr (Just $ FuncType (VarType i) $ map snd irs) \ir typ -> do 
-      (Tuple return ts) <- unifyFunction args typ
-      compileConts (map (\(Tuple e t) -> Tuple e $ Just t) ts) \irs' -> f (ApplyIr ir (map fst irs')) return
-compileCont (OpExpr expr operators) expected f = do
-  env <- ask
+  pure $ Tuple (StringIr string) typ
+compile (ApplyExpr expr args) expected = do
+  argsC <- traverse (\e -> compile e Nothing) args
+  i <- fresh
+  (Tuple ir typ) <- compile expr (Just $ FuncType (VarType i) $ map snd argsC)
+  (Tuple return ts) <- unifyFunction args typ
+  pure $ Tuple (ApplyIr ir (map fst argsC)) return
+compile (OpExpr expr operators) expected = do
+  env <- get
   ops <- traverse (lookup env) operators
   apply <- applyOps ops Nil (expr : Nil)
-  compileCont apply expected f
+  compile apply expected
     where
       lookup env (Tuple name e) = case lookupOp name env of
         Nothing -> throwError $ "Undefined " <> name
         Just op -> pure $ Tuple op e
-compileCont (BlockExpr exprs) expected f = compileConts (map (\expr -> Tuple expr Nothing) exprs) \x -> case last x of
-  Nothing -> throwError $ "Empty block"
-  Just (Tuple expr typ) -> f expr typ
-compileCont (LambdaExpr args expr) expected f = do
+compile (BlockExpr exprs) expected = do
+  x <- traverse (\e -> compile e Nothing) exprs
+  case last x of
+    Nothing -> throwError $ "Empty block"
+    Just (Tuple expr typ) -> pure $ Tuple expr typ
+compile (LambdaExpr args expr) expected = do
   argTyps <- traverse (\(Tuple name maybeTyp) -> case maybeTyp of 
     Nothing -> Tuple name <$> VarType <$> fresh
     Just typ -> pure $ Tuple name typ) args
@@ -149,36 +146,35 @@ compileCont (LambdaExpr args expr) expected f = do
   (Tuple returnTyp unifiedArgTyps) <- unsafePartial $ do 
     (FuncType r as) <- unifyMaybe (FuncType (VarType name) (map snd argTyps)) expected
     pure $ Tuple r as
-  (Tuple ir typ) <- local (insertGlobals $ zip (map fst argTyps) unifiedArgTyps) $ compileCont expr (Just returnTyp) \ir typ -> do
-    types <- traverse (\(Tuple arg t) -> snd <$> compile (IdentExpr arg) t) args
-    pure $ Tuple ir (FuncType typ types)
-  f (LambdaIr (map fst args) ir) typ
-compileCont (DoExpr expr) expected f = do
+  env <- get
+  put $ insertGlobals (zip (map fst argTyps) unifiedArgTyps) env
+  (Tuple ir typ) <- compile expr $ Just returnTyp
+  types <- traverse (\(Tuple arg t) -> snd <$> compile (IdentExpr arg) t) args
+  put env
+  pure $ Tuple (LambdaIr (map fst args) ir) $ FuncType typ types
+compile (DoExpr expr) expected = do
   name <- (<>) "_" <$> fresh
-  (Tuple cont contType) <- f (IdentIr name) (VarType name)
-  compileCont expr Nothing (\ir typ -> pure $ Tuple (DoIr ir name cont) contType)
-compileCont (HandleExpr expr cont) expected f = do
+  (Tuple cont contType) <- pure $ Tuple (IdentIr name) (VarType name)
+  (Tuple ir typ) <- compile expr Nothing 
+  pure $ Tuple (DoIr ir) contType
+compile (HandleExpr expr cont) expected = do
   (Tuple ir irTyp) <- compile expr expected
   (Tuple contIr contTyp) <- compile cont expected
-  f (HandleIr ir contIr) contTyp
-compileCont (DefExpr name maybeTyp expr) expected f = do
+  pure $ Tuple (HandleIr ir contIr) contTyp
+compile (DefExpr name maybeTyp expr) expected = do
   unifiedTyp <- case maybeTyp of
     Nothing -> VarType <$> fresh
     Just typ -> unifyMaybe typ expected
-  (Tuple ir irTyp) <- local (insertGlobal name unifiedTyp) $ compile expr $ Just unifiedTyp
-  unifiedIrTyp <- unify unifiedTyp irTyp
-  (Tuple cont contTyp) <- local (insertGlobal name unifiedIrTyp) $ f (IdentIr name) unifiedIrTyp
-  pure $ Tuple (DefIr name ir cont) contTyp
-compileCont (InfixExpr assoc name prec expr) expected f = local (insertOp assoc name prec expr) $ compileCont expr expected f
-compileCont (ExternExpr name typ) expected f = do
+  void $ modify $ insertGlobal name unifiedTyp
+  (Tuple ir irTyp) <- compile expr $ Just unifiedTyp
+  pure $ Tuple (DefIr name ir) irTyp
+compile (InfixExpr assoc name prec expr) expected = do
+  void $ modify $ insertOp assoc name prec expr
+  compile expr expected
+compile (ExternExpr name typ) expected = do
   unifiedTyp <- unifyMaybe typ expected
-  local (insertGlobal name typ) $ f (IdentIr name) unifiedTyp
-
-compileConts :: forall m. Monad m => List (Tuple Expr (Maybe Type)) -> (List (Tuple Ir Type) -> CompilerT m (Tuple Ir Type)) -> CompilerT m (Tuple Ir Type)
-compileConts Nil f = f Nil
-compileConts ((Tuple expr typ) : cdr) f = 
-  compileCont expr typ \carIr carTyp -> 
-    compileConts cdr \irs -> f $ (Tuple carIr carTyp) : irs
+  void $ modify $ insertGlobal name typ
+  pure $ Tuple (IdentIr name) unifiedTyp
 
 applyOps :: forall m. (MonadError String m) => List (Tuple Op Expr) -> List Op -> List Expr -> m Expr
 applyOps Nil Nil (expr : Nil) = pure expr
@@ -191,7 +187,7 @@ applyOps _ _ _ = throwError "Invalid operator state"
 runOp :: forall m. (MonadError String m) => Op -> List Op -> List Expr -> m (Tuple (List Op) (List Expr))
 runOp op Nil exprs = pure $ Tuple (op : Nil) exprs
 runOp op@(Op assoc opPrec expr) (pop@(Op _ popPrec _) : ops) (right : left : exprs) =  
-  if popPrec > opPrec || (popPrec == opPrec && assoc == Left)
+  if popPrec > opPrec || (popPrec == opPrec && assoc == LeftAssoc)
   then runOp op ops ((ApplyExpr expr (left : right : Nil)) : exprs)
   else pure $ Tuple (op : pop : ops) (left : right : exprs)
 runOp _ _ _ = throwError "Invalid operator state" 

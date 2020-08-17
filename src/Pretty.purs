@@ -11,8 +11,8 @@ import Prettier.Printer (DOC, group, line, nest, pretty, text, txt)
 import Types (Assoc(..), Expr(..), Ir(..), Type(..))
 
 assocDoc :: Assoc -> DOC
-assocDoc Left = text "blue" "left "
-assocDoc Right = text "blue" "right "
+assocDoc LeftAssoc = text "blue" "left "
+assocDoc RightAssoc = text "blue" "right "
 
 intDoc :: BigInt -> DOC
 intDoc int = text "cyan" $ toString int
@@ -88,10 +88,11 @@ irDoc (IntIr int) = intDoc int
 irDoc (CharIr char) = text "green" $ show char
 irDoc (StringIr string) = text "green" $ show string
 irDoc (ApplyIr ir args) = irDoc ir <> txt "(" <> (group $ nest 2 $ intercalate (txt ", ") $ map (irDoc >>> ((<>) line)) args) <> txt ")"
+irDoc (BlockIr irs) = txt "{" <> (group $ nest 2 $ intercalate (txt "; ") $ map (irDoc >>> ((<>) line)) irs) <> txt ")"
 irDoc (LambdaIr args ir) = txt "\\" <> intercalate (txt ", ") (map txt args) <> txt " -> " <> (group $ nest 2 $ line <> irDoc ir)
-irDoc (DoIr ir name cont) = text "blue" "do " <> txt (name <> " = ") <> irDoc ir <> text "blue" " in " <> line <> irDoc cont
+irDoc (DoIr ir) = text "blue" "do " <> irDoc ir
 irDoc (HandleIr ir cont) = text "blue" "handle " <> irDoc ir <> text "blue" " with " <> line <> irDoc cont
-irDoc (DefIr name ir cont) = text "blue" "def " <> txt (name <> " = ") <> irDoc ir <> text "blue" " in " <> line <> irDoc cont
+irDoc (DefIr name ir) = text "blue" "def " <> txt (name <> " = ") <> irDoc ir
 
 showIr :: Int -> Ir -> String
 showIr width ir = pretty width $ group $ irDoc ir

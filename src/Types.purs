@@ -7,7 +7,7 @@ import Data.List (List)
 import Data.Maybe (Maybe)
 import Data.Tuple (Tuple(..))
 
-data Assoc = Left | Right
+data Assoc = LeftAssoc | RightAssoc
 
 data Op = Op Assoc BigInt Expr
 
@@ -38,12 +38,10 @@ data Ir
   | CharIr Char
   | StringIr String
   | ApplyIr Ir (List Ir)
+  | BlockIr (List Ir)
   | LambdaIr (List String) Ir
-  | DoIr Ir String Ir
+  | DoIr Ir
   | HandleIr Ir Ir
-  | DefIr String Ir Ir
+  | DefIr String Ir
 
 derive instance eqAssoc :: Eq Assoc
-
-showTuple :: forall a b. Show a => Show b => Tuple a b -> String
-showTuple (Tuple a b) = show a <> " " <> show b
