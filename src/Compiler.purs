@@ -14,10 +14,9 @@ import Data.Map (Map, insert, lookup)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..), fst, snd, uncurry)
+import Data.Tuple (Tuple(..), fst, uncurry)
 import Effect.Class (class MonadEffect)
-import Partial.Unsafe (unsafePartial)
-import Pretty (showType)
+import Pretty (showExpr, showType)
 import Types (Assoc(..), Expr(..), Ir(..), Op(..), Type(..))
 
 newtype CompilerT m a = CompilerT (StateT Env (ExceptT String m) a)
@@ -63,118 +62,79 @@ fresh = do
   put $ Env (i + 1) globals ops
   pure $ show i
 
-unifyFunction :: forall m. Monad m => List Expr -> Type -> CompilerT m (Tuple Type (List (Tuple Expr Type)))
-unifyFunction exprs (FuncType return args) = do
-  ts <- unifyTypes exprs args
-  pure $ Tuple return ts
-unifyFunction exprs typ = throwError "Not a function type"
+check :: forall m. Monad m => Expr -> Type -> CompilerT m Ir
+check (LambdaExpr args expr) typ = case typ of
+  (FuncType retTyp argsTyp) -> do
+    env <- get
+    void $ modify $ insertGlobals (zip (map fst args) argsTyp)
+    exprIr <- check expr retTyp
+    put env
+    pure $ LambdaIr (map fst args) exprIr
+  x -> throwError $ "Expected function, found " <> showType 40 x
+check expr typ = do
+  (Tuple ir typ') <- synth expr
+  checkIs typ typ'
+  pure ir
 
-unifyTypes :: forall m. Monad m => List Expr -> List Type -> CompilerT m (List (Tuple Expr Type))
-unifyTypes Nil Nil = pure Nil
-unifyTypes (expr : exprs) (typ : typs) = do
-  rest <- unifyTypes exprs typs
-  pure $ (Tuple expr typ) : rest
-unifyTypes exprs typs = throwError "Could not unify"
+checkIs :: forall m. Monad m => Type -> Type -> CompilerT m Unit
+checkIs (IdentType n1) (IdentType n2) = if n1 == n2 
+  then pure unit
+  else throwError $ n1 <> " is not a " <> n2
+checkIs (FuncType r1 args1) (FuncType r2 args2) = do
+  checkIs r1 r2
+  checkIsList args1 args2
+checkIs t1 t2 = throwError $ showType 40 t1 <> " is not a " <> showType 40 t2
 
-unifyList :: forall m. Monad m => List Type -> List Type -> CompilerT m (List Type)
-unifyList Nil Nil = pure Nil
-unifyList (car1 : cdr1) (car2 : cdr2) = do
-  car <- unify car1 car2
-  cdr <- unifyList cdr1 cdr2
-  pure $ car : cdr
-unifyList l1 l2 = throwError "Mismatched lists"
+checkIsList :: forall m. Monad m => List Type -> List Type -> CompilerT m Unit
+checkIsList Nil Nil = pure unit
+checkIsList (car : cdr) (car' : cdr') = do
+  checkIs car car'
+  checkIsList cdr cdr'
+checkIsList l1 l2 = throwError "Mismatched lists"
 
-unify :: forall m. Monad m => Type -> Type -> CompilerT m Type
-unify typ (VarType _) = pure typ
-unify (VarType _) typ = pure typ
-unify (IdentType n1) (IdentType n2) = if n1 == n2 
-  then pure $ IdentType n1
-  else throwError $ "Could not unify " <> n1 <> " and " <> n2
-unify (FuncType r1 args1) (FuncType r2 args2) = do
-  return <- unify r1 r2
-  args <- unifyList args1 args2
-  pure $ FuncType return args
-unify t1 t2 = throwError $ "Could not unify " <> showType 40 t1 <> " and " <> showType 40 t2
-
-unifyMaybe :: forall m. Monad m => Type -> Maybe Type -> CompilerT m Type
-unifyMaybe typ Nothing = pure typ
-unifyMaybe typ (Just typ') = unify typ typ'
-
-compile :: forall m. Monad m => Expr -> Maybe Type -> CompilerT m (Tuple Ir Type)
-compile (IdentExpr name) expected = do
+synth :: forall m. Monad m => Expr -> CompilerT m (Tuple Ir Type)
+synth (IdentExpr name) = do
   env <- get
   case lookupGlobal name env of
     Nothing -> throwError $ "Undefined " <> name
-    Just typ -> do
-      unifiedTyp <- unifyMaybe typ expected
-      void $ modify $ insertGlobal name unifiedTyp
-      pure $ Tuple (IdentIr name) unifiedTyp
-compile (IntExpr int) expected = do
-  typ <- unifyMaybe (IdentType "int") expected
-  pure $ Tuple (IntIr int) typ
-compile (CharExpr char) expected = do
-  typ <- unifyMaybe (IdentType "char") expected
-  pure $ Tuple (CharIr char) typ
-compile (StringExpr string) expected = do
-  typ <- unifyMaybe (IdentType "string") expected
-  pure $ Tuple (StringIr string) typ
-compile (ApplyExpr expr args) expected = do
-  argsC <- traverse (\e -> compile e Nothing) args
-  i <- fresh
-  (Tuple ir typ) <- compile expr (Just $ FuncType (VarType i) $ map snd argsC)
-  (Tuple return ts) <- unifyFunction args typ
-  pure $ Tuple (ApplyIr ir (map fst argsC)) return
-compile (OpExpr expr operators) expected = do
+    Just typ -> pure $ Tuple (IdentIr name) typ
+synth (IntExpr int) = pure $ Tuple (IntIr int) $ IdentType "int"
+synth (CharExpr char) = pure $ Tuple (CharIr char) $ IdentType "char"
+synth (StringExpr string) = pure $ Tuple (StringIr string) $ IdentType "string"
+synth (ApplyExpr fun args) = do
+  (Tuple funIr funTyp) <- synth fun
+  case funTyp of 
+    (FuncType retTyp argsTyp) -> do
+      argsIrs <- traverse (\(Tuple expr typ) -> check expr typ) $ zip args argsTyp
+      pure $ Tuple (ApplyIr funIr argsIrs) retTyp
+    x -> throwError $ "Expected function, found " <> showType 40 x
+synth (OpExpr expr operators) = do
   env <- get
-  ops <- traverse (lookup env) operators
+  ops <- traverse (\(Tuple name e) -> case lookupOp name env of
+    Nothing -> throwError $ "Undefined " <> name
+    Just op -> pure $ Tuple op e) operators
   apply <- applyOps ops Nil (expr : Nil)
-  compile apply expected
-    where
-      lookup env (Tuple name e) = case lookupOp name env of
-        Nothing -> throwError $ "Undefined " <> name
-        Just op -> pure $ Tuple op e
-compile (BlockExpr exprs) expected = do
-  x <- traverse (\e -> compile e Nothing) exprs
-  case last x of
+  synth apply
+synth (BlockExpr exprs) = do
+  synths <- traverse synth exprs
+  case last synths of
     Nothing -> throwError $ "Empty block"
-    Just (Tuple expr typ) -> pure $ Tuple expr typ
-compile (LambdaExpr args expr) expected = do
-  argTyps <- traverse (\(Tuple name maybeTyp) -> case maybeTyp of 
-    Nothing -> Tuple name <$> VarType <$> fresh
-    Just typ -> pure $ Tuple name typ) args
-  name <- fresh
-  (Tuple returnTyp unifiedArgTyps) <- unsafePartial $ do 
-    (FuncType r as) <- unifyMaybe (FuncType (VarType name) (map snd argTyps)) expected
-    pure $ Tuple r as
-  env <- get
-  put $ insertGlobals (zip (map fst argTyps) unifiedArgTyps) env
-  (Tuple ir typ) <- compile expr $ Just returnTyp
-  types <- traverse (\(Tuple arg t) -> snd <$> compile (IdentExpr arg) t) args
-  put env
-  pure $ Tuple (LambdaIr (map fst args) ir) $ FuncType typ types
-compile (DoExpr expr) expected = do
-  name <- (<>) "_" <$> fresh
-  (Tuple cont contType) <- pure $ Tuple (IdentIr name) (VarType name)
-  (Tuple ir typ) <- compile expr Nothing 
-  pure $ Tuple (DoIr ir) contType
-compile (HandleExpr expr cont) expected = do
-  (Tuple ir irTyp) <- compile expr expected
-  (Tuple contIr contTyp) <- compile cont expected
-  pure $ Tuple (HandleIr ir contIr) contTyp
-compile (DefExpr name maybeTyp expr) expected = do
-  unifiedTyp <- case maybeTyp of
-    Nothing -> VarType <$> fresh
-    Just typ -> unifyMaybe typ expected
-  void $ modify $ insertGlobal name unifiedTyp
-  (Tuple ir irTyp) <- compile expr $ Just unifiedTyp
-  pure $ Tuple (DefIr name ir) irTyp
-compile (InfixExpr assoc name prec expr) expected = do
-  void $ modify $ insertOp assoc name prec expr
-  compile expr expected
-compile (ExternExpr name typ) expected = do
-  unifiedTyp <- unifyMaybe typ expected
+    Just (Tuple _ typ) -> pure $ Tuple (BlockIr (map fst synths)) typ
+synth (DefExpr name (Just typ) expr) = do
   void $ modify $ insertGlobal name typ
-  pure $ Tuple (IdentIr name) unifiedTyp
+  ir <- check expr typ
+  pure $ Tuple (DefIr name ir) typ
+synth (DefExpr name Nothing expr) = do
+  (Tuple ir irTyp) <- synth expr
+  void $ modify $ insertGlobal name irTyp
+  pure $ Tuple (DefIr name ir) irTyp
+synth (InfixExpr assoc name prec expr) = do
+  void $ modify $ insertOp assoc name prec expr
+  synth expr
+synth (ExternExpr name typ) = do
+  void $ modify $ insertGlobal name typ
+  pure $ Tuple (IdentIr name) typ
+synth expr = throwError $ "Could not synthesize type for " <> showExpr 40 expr
 
 applyOps :: forall m. (MonadError String m) => List (Tuple Op Expr) -> List Op -> List Expr -> m Expr
 applyOps Nil Nil (expr : Nil) = pure expr

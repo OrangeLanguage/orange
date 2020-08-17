@@ -5,7 +5,7 @@ import Prelude
 import Data.BigInt (BigInt)
 import Data.List (List)
 import Data.Maybe (Maybe)
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple)
 
 data Assoc = LeftAssoc | RightAssoc
 
@@ -28,7 +28,6 @@ data Expr
 
 data Type
   = IdentType String
-  | VarType String
   | ApplyType Type (List Type)
   | FuncType Type (List Type)
 

@@ -19,7 +19,6 @@ intDoc int = text "cyan" $ toString int
 
 typeDoc :: Type -> DOC
 typeDoc (IdentType typ) = txt typ
-typeDoc (VarType var) = txt var
 typeDoc (ApplyType typ args) = typeDoc typ <> txt "<" <> (group $ nest 2 $ intercalate (txt ", ") $ map (typeDoc >>> ((<>) line)) args) <> txt ">"
 typeDoc (FuncType return args) = txt "(" <> (group $ nest 2 $ intercalate (txt ", ") $ map (typeDoc >>> ((<>) line)) args) <> txt ") -> " <> line <> typeDoc return
 
@@ -88,7 +87,7 @@ irDoc (IntIr int) = intDoc int
 irDoc (CharIr char) = text "green" $ show char
 irDoc (StringIr string) = text "green" $ show string
 irDoc (ApplyIr ir args) = irDoc ir <> txt "(" <> (group $ nest 2 $ intercalate (txt ", ") $ map (irDoc >>> ((<>) line)) args) <> txt ")"
-irDoc (BlockIr irs) = txt "{" <> (group $ nest 2 $ intercalate (txt "; ") $ map (irDoc >>> ((<>) line)) irs) <> txt ")"
+irDoc (BlockIr irs) = txt "{" <> (group $ nest 2 $ intercalate (txt "; ") $ map (irDoc >>> ((<>) line)) irs) <> txt "}"
 irDoc (LambdaIr args ir) = txt "\\" <> intercalate (txt ", ") (map txt args) <> txt " -> " <> (group $ nest 2 $ line <> irDoc ir)
 irDoc (DoIr ir) = text "blue" "do " <> irDoc ir
 irDoc (HandleIr ir cont) = text "blue" "handle " <> irDoc ir <> text "blue" " with " <> line <> irDoc cont
