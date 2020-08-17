@@ -23,6 +23,7 @@ data Expr
   | DoExpr Expr
   | HandleExpr Expr Expr
   | DefExpr String (Maybe Type) Expr
+  | TypeExpr String Type
   | InfixExpr Assoc String BigInt Expr
   | ExternExpr String Type
 

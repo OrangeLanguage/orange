@@ -76,7 +76,7 @@ compile :: Expr -> NodeRepl Unit
 compile tree = do
   modify_ (\exprs -> exprs <> singleton tree)
   block <- gets BlockExpr
-  (Tuple ir typ) <- liftEffect $ either (error >>> throwError) pure $ runCompiler (synth block) $ Env 0 empty empty
+  (Tuple ir typ) <- liftEffect $ either (error >>> throwError) pure $ runCompiler (synth block) $ Env 0 empty empty empty
   log $ showIr 40 ir
   log $ showType 40 typ
 

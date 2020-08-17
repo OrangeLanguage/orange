@@ -226,6 +226,16 @@ parseDef = do
   expr <- parseExpr unit
   pure $ DefExpr name typ expr
 
+parseTypedef :: Parser Expr
+parseTypedef = do
+  void $ string "type"
+  ignored
+  name <- parseIdent
+  void $ char '='
+  ignored
+  typ <- parseType unit
+  pure $ TypeExpr name typ
+
 parseAssoc :: Parser Assoc
 parseAssoc = string "left" *> pure LeftAssoc <|> string "right" *> pure RightAssoc
 
@@ -250,7 +260,7 @@ parseExtern = do
   pure $ ExternExpr name typ
 
 parseExpr :: Unit -> Parser Expr
-parseExpr unit = parseBlock <|> parseDo <|> parseHandle <|> parseDef <|> parseInfix <|> parseExtern <|> try parseLambda <|> parseOperators unit
+parseExpr unit = parseBlock <|> parseDo <|> parseHandle <|> parseDef <|> parseTypedef <|> parseInfix <|> parseExtern <|> try parseLambda <|> parseOperators unit
 
 parseRepl :: Parser (Maybe Expr)
 parseRepl = do

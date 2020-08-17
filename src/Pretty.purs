@@ -66,6 +66,11 @@ exprDoc (DefExpr name typ expr) =
   withTypeDoc name typ <> 
   txt " = " <> 
   nest 2 (line <> exprDoc expr)
+exprDoc (TypeExpr name typ) = 
+  text "blue" "def " <> 
+  txt "name" <>
+  txt " = " <> 
+  nest 2 (line <> typeDoc typ)
 exprDoc (InfixExpr assoc op int expr) = 
   text "blue" "infix " <> 
   assocDoc assoc <> 
