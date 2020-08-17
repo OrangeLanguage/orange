@@ -49,7 +49,7 @@ exprDoc (BlockExpr exprs) =
   txt "}"
 exprDoc (LambdaExpr args expr) = 
   txt "\\" <> 
-  group (nest 2 $ intercalate (txt ", ") (map (uncurry withTypeDoc >>> ((<>) line)) args)) <> 
+  group (nest 2 $ intercalate (txt ", ") (map (txt >>> ((<>) line)) args)) <> 
   txt " -> " <> 
   group (nest 2 $ line <> exprDoc expr)
 exprDoc (DoExpr expr) = 

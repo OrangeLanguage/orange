@@ -19,7 +19,7 @@ data Expr
   | ApplyExpr Expr (List Expr)
   | OpExpr Expr (List (Tuple String Expr))
   | BlockExpr (List Expr)
-  | LambdaExpr (List (Tuple String (Maybe Type))) Expr
+  | LambdaExpr (List String) Expr
   | DoExpr Expr
   | HandleExpr Expr Expr
   | DefExpr String (Maybe Type) Expr

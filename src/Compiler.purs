@@ -69,10 +69,10 @@ check :: forall m. Monad m => Expr -> Type -> CompilerT m Ir
 check (LambdaExpr args expr) typ = case typ of
   (FuncType retTyp argsTyp) -> do
     env <- get
-    put $ foldr (uncurry insertGlobal) env $ zip (map fst args) argsTyp
+    put $ foldr (uncurry insertGlobal) env $ zip args argsTyp
     exprIr <- check expr retTyp
     put env
-    pure $ LambdaIr (map fst args) exprIr
+    pure $ LambdaIr args exprIr
   x -> throwError $ "Expected function, found " <> showType 40 x
 check expr typ = do
   (Tuple ir typ') <- synth expr

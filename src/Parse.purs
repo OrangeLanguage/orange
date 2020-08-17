@@ -191,10 +191,8 @@ parseBlock = do
 
 parseLambda :: Parser Expr
 parseLambda = do
-  void $ char '('
   ignored
-  args <- sepBy parseMaybeTypedName (char ',' <* ignored)
-  void $ char ')'
+  args <- sepBy parseIdent (char ',' <* ignored)
   ignored
   void $ string "->"
   ignored
