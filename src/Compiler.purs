@@ -41,35 +41,35 @@ runCompiler compiler env = unwrap $ runCompilerT compiler env
 
 data Env = Env Int (Map String Type) (Map String Type) (Map String Op)
 
-insertGlobal :: String -> Type -> Env -> Env
-insertGlobal name typ (Env i globals types ops) = Env i (insert name typ globals) types ops
+insertDef :: String -> Type -> Env -> Env
+insertDef name typ (Env i defs types ops) = Env i (insert name typ defs) types ops
 
 insertType :: String -> Type -> Env -> Env
-insertType name typ (Env i globals types ops) = Env i globals (insert name typ types) ops
+insertType name typ (Env i defs types ops) = Env i defs (insert name typ types) ops
 
 insertOp :: Assoc -> String -> BigInt -> Expr -> Env -> Env
-insertOp assoc name prec expr (Env i globals types ops) = Env i globals types (insert name (Op assoc prec expr) ops)
+insertOp assoc name prec expr (Env i defs types ops) = Env i defs types (insert name (Op assoc prec expr) ops)
 
-lookupGlobal :: String -> Env -> Maybe Type
-lookupGlobal name (Env i globals types ops) = lookup name globals
+lookupDef :: String -> Env -> Maybe Type
+lookupDef name (Env i defs types ops) = lookup name defs
 
 lookupType :: String -> Env -> Maybe Type
-lookupType name (Env i globals types ops) = lookup name types
+lookupType name (Env i defs types ops) = lookup name types
 
 lookupOp :: String -> Env -> Maybe Op
-lookupOp name (Env i globals types ops) = lookup name ops
+lookupOp name (Env i defs types ops) = lookup name ops
 
 fresh :: forall m. Monad m => CompilerT m String
 fresh = do
-  (Env i globals types ops) <- get
-  put $ Env (i + 1) globals types ops
+  (Env i defs types ops) <- get
+  put $ Env (i + 1) defs types ops
   pure $ show i
 
 check :: forall m. Monad m => Expr -> Type -> CompilerT m Ir
 check (LambdaExpr args expr) typ = case typ of
   (FuncType retTyp argsTyp) -> do
     env <- get
-    put $ foldr (uncurry insertGlobal) env $ zip args argsTyp
+    put $ foldr (uncurry insertDef) env $ zip args argsTyp
     exprIr <- check expr retTyp
     put env
     pure $ LambdaIr args exprIr
@@ -105,7 +105,7 @@ checkIsList l1 l2 = throwError "Mismatched lists"
 synth :: forall m. Monad m => Expr -> CompilerT m (Tuple Ir Type)
 synth (IdentExpr name) = do
   env <- get
-  case lookupGlobal name env of
+  case lookupDef name env of
     Nothing -> throwError $ "Undefined " <> name
     Just typ -> pure $ Tuple (IdentIr name) typ
 synth (IntExpr int) = pure $ Tuple (IntIr int) $ IdentType "int"
@@ -131,12 +131,12 @@ synth (BlockExpr exprs) = do
     Nothing -> pure $ Tuple (IdentIr "unit") (IdentType "unit")
     Just (Tuple _ typ) -> pure $ Tuple (BlockIr (map fst synths)) typ
 synth (DefExpr name (Just typ) expr) = do
-  void $ modify $ insertGlobal name typ
+  void $ modify $ insertDef name typ
   ir <- check expr typ
   pure $ Tuple (DefIr name ir) typ
 synth (DefExpr name Nothing expr) = do
   (Tuple ir irTyp) <- synth expr
-  void $ modify $ insertGlobal name irTyp
+  void $ modify $ insertDef name irTyp
   pure $ Tuple (DefIr name ir) irTyp
 synth (TypeExpr name typ) = do
   void $ modify $ insertType name typ
@@ -145,7 +145,7 @@ synth (InfixExpr assoc name prec expr) = do
   void $ modify $ insertOp assoc name prec expr
   synth expr
 synth (ExternExpr name typ) = do
-  void $ modify $ insertGlobal name typ
+  void $ modify $ insertDef name typ
   pure $ Tuple (IdentIr name) typ
 synth expr = throwError $ "Could not synthesize type for " <> showExpr 40 expr
 

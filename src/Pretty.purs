@@ -6,11 +6,11 @@ import Data.BigInt (BigInt, toString)
 import Data.Foldable (intercalate)
 import Data.List (fold)
 import Data.Maybe (Maybe(..))
-import Data.Tuple (Tuple(..), uncurry)
+import Data.Tuple (Tuple(..))
 import Prettier.Printer (DOC, group, line, nest, pretty, text, txt)
 import Types (Assoc(..), Expr(..), Ir(..), Type(..))
 
-assocDoc :: Assoc -> DOC
+assocDoc :: Assoc -> DOC  
 assocDoc LeftAssoc = text "blue" "left "
 assocDoc RightAssoc = text "blue" "right "
 
