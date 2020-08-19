@@ -18,6 +18,10 @@ intDoc :: BigInt -> DOC
 intDoc int = text "cyan" $ toString int
 
 typeDoc :: Type -> DOC
+typeDoc IntType = text "blue" "int"
+typeDoc CharType = text "blue" "char"
+typeDoc StringType = text "blue" "string"
+typeDoc UnitType = text "blue" "unit"
 typeDoc (IdentType typ) = txt typ
 typeDoc (ApplyType typ args) = typeDoc typ <> txt "<" <> (group $ nest 2 $ intercalate (txt ", ") $ map (typeDoc >>> ((<>) line)) args) <> txt ">"
 typeDoc (FuncType return args) = txt "(" <> (group $ nest 2 $ intercalate (txt ", ") $ map (typeDoc >>> ((<>) line)) args) <> txt ") -> " <> line <> typeDoc return
@@ -30,10 +34,10 @@ withTypeDoc name Nothing = txt name
 withTypeDoc name (Just typ) = txt name <> group (nest 2 $ line <> txt ": " <> typeDoc typ)
 
 exprDoc :: Expr -> DOC
-exprDoc (IdentExpr name) = txt name
 exprDoc (IntExpr int) = intDoc int
 exprDoc (CharExpr char) = text "green" $ show char
 exprDoc (StringExpr string) = text "green" $ show string
+exprDoc (IdentExpr name) = txt name
 exprDoc (ApplyExpr expr args) = 
   exprDoc expr <> 
   txt "(" <> 
@@ -87,10 +91,10 @@ showExpr :: Int -> Expr -> String
 showExpr width expr = pretty width $ group $ exprDoc expr
 
 irDoc :: Ir -> DOC
-irDoc (IdentIr name) = txt name
 irDoc (IntIr int) = intDoc int
 irDoc (CharIr char) = text "green" $ show char
 irDoc (StringIr string) = text "green" $ show string
+irDoc (IdentIr name) = txt name
 irDoc (ApplyIr ir args) = irDoc ir <> txt "(" <> (group $ nest 2 $ intercalate (txt ", ") $ map (irDoc >>> ((<>) line)) args) <> txt ")"
 irDoc (BlockIr irs) = txt "{" <> (group $ nest 2 $ intercalate (txt "; ") $ map (irDoc >>> ((<>) line)) irs) <> txt "}"
 irDoc (LambdaIr args ir) = txt "\\" <> intercalate (txt ", ") (map txt args) <> txt " -> " <> (group $ nest 2 $ line <> irDoc ir)

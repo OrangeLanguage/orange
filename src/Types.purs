@@ -12,10 +12,10 @@ data Assoc = LeftAssoc | RightAssoc
 data Op = Op Assoc BigInt Expr
 
 data Expr
-  = IdentExpr String
-  | IntExpr BigInt
+  = IntExpr BigInt
   | CharExpr Char
   | StringExpr String
+  | IdentExpr String
   | ApplyExpr Expr (List Expr)
   | OpExpr Expr (List (Tuple String Expr))
   | BlockExpr (List Expr)
@@ -28,15 +28,19 @@ data Expr
   | ExternExpr String Type
 
 data Type
-  = IdentType String
+  = IntType
+  | CharType
+  | StringType
+  | UnitType
+  | IdentType String
   | ApplyType Type (List Type)
   | FuncType Type (List Type)
 
 data Ir
-  = IdentIr String
-  | IntIr BigInt
+  = IntIr BigInt
   | CharIr Char
   | StringIr String
+  | IdentIr String
   | ApplyIr Ir (List Ir)
   | BlockIr (List Ir)
   | LambdaIr (List String) Ir

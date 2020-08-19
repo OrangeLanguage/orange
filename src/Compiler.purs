@@ -80,6 +80,10 @@ check expr typ = do
   pure ir
 
 checkIs :: forall m. Monad m => Type -> Type -> CompilerT m Unit
+checkIs IntType IntType = pure unit
+checkIs CharType CharType = pure unit
+checkIs StringType StringType = pure unit
+checkIs UnitType UnitType = pure unit
 checkIs t1 (IdentType n2) = do
   env <- get
   case lookupType n2 env of 
@@ -93,7 +97,7 @@ checkIs (IdentType n1) t2 = do
 checkIs (FuncType r1 args1) (FuncType r2 args2) = do
   checkIs r1 r2
   checkIsList args1 args2
-checkIs t1 t2 = throwError $ showType 40 t1 <> " is not a " <> showType 40 t2
+checkIs t1 t2 = throwError $ showType 40 t1 <> " does not equal " <> showType 40 t2
 
 checkIsList :: forall m. Monad m => List Type -> List Type -> CompilerT m Unit
 checkIsList Nil Nil = pure unit
@@ -103,14 +107,14 @@ checkIsList (car : cdr) (car' : cdr') = do
 checkIsList l1 l2 = throwError "Mismatched lists"
 
 synth :: forall m. Monad m => Expr -> CompilerT m (Tuple Ir Type)
+synth (IntExpr int) = pure $ Tuple (IntIr int) IntType
+synth (CharExpr char) = pure $ Tuple (CharIr char) CharType
+synth (StringExpr string) = pure $ Tuple (StringIr string) StringType
 synth (IdentExpr name) = do
   env <- get
   case lookupDef name env of
     Nothing -> throwError $ "Undefined " <> name
     Just typ -> pure $ Tuple (IdentIr name) typ
-synth (IntExpr int) = pure $ Tuple (IntIr int) $ IdentType "int"
-synth (CharExpr char) = pure $ Tuple (CharIr char) $ IdentType "char"
-synth (StringExpr string) = pure $ Tuple (StringIr string) $ IdentType "string"
 synth (ApplyExpr fun args) = do
   (Tuple funIr funTyp) <- synth fun
   case funTyp of 
@@ -128,7 +132,7 @@ synth (OpExpr expr operators) = do
 synth (BlockExpr exprs) = do
   synths <- traverse synth exprs
   case last synths of
-    Nothing -> pure $ Tuple (IdentIr "unit") (IdentType "unit")
+    Nothing -> pure $ Tuple (BlockIr Nil) UnitType
     Just (Tuple _ typ) -> pure $ Tuple (BlockIr (map fst synths)) typ
 synth (DefExpr name (Just typ) expr) = do
   void $ modify $ insertDef name typ
@@ -140,7 +144,7 @@ synth (DefExpr name Nothing expr) = do
   pure $ Tuple (DefIr name ir) irTyp
 synth (TypeExpr name typ) = do
   void $ modify $ insertType name typ
-  pure $ Tuple (IdentIr "unit") (IdentType "unit")
+  pure $ Tuple (BlockIr Nil) UnitType
 synth (InfixExpr assoc name prec expr) = do
   void $ modify $ insertOp assoc name prec expr
   synth expr

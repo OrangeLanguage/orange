@@ -8,10 +8,10 @@ import Prettier.Printer (DOC, group, line, nest, pretty, txt)
 import Types (Ir(..))
 
 generateDoc :: Ir -> DOC
-generateDoc (IdentIr name) = txt name
 generateDoc (IntIr int) = txt $ toString int
 generateDoc (CharIr char) = txt $ show char
 generateDoc (StringIr string) = txt $ show string
+generateDoc (IdentIr name) = txt name
 generateDoc (ApplyIr ir args) =
   generateDoc ir <> 
   txt "(" <> 

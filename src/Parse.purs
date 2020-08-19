@@ -45,13 +45,6 @@ escape = do
   void $ string "\\\""
   pure '"'
 
-parseIdent :: Parser String
-parseIdent = do
-  head <- letter
-  tail <- fromCharArray <$> Array.many (letter <|> digit)
-  ignored
-  pure $ singleton head <> tail
-
 parseInt :: Parser BigInt
 parseInt = do
   sign <- option "" $ string "-"
@@ -76,6 +69,13 @@ parseString = do
   ignored
   pure chars
 
+parseIdent :: Parser String
+parseIdent = do
+  head <- letter
+  tail <- fromCharArray <$> Array.many (letter <|> digit)
+  ignored
+  pure $ singleton head <> tail
+
 parseParens :: forall a. (Unit -> Parser a) -> Parser a
 parseParens parser = do
   void $ char '('
@@ -85,10 +85,16 @@ parseParens parser = do
   ignored
   pure a
 
+parseIdentType :: Parser Type
+parseIdentType = parseIdent <#> \name -> case name of
+  "int" -> IntType
+  "char" -> CharType
+  "string" -> StringType
+  "unit" -> UnitType
+  x -> IdentType x
+
 parseAtomicType :: Unit -> Parser Type
-parseAtomicType unit =
-  IdentType <$> parseIdent <|>
-  parseParens parseType
+parseAtomicType unit = parseIdentType <|> parseParens parseType
 
 parseApplyType :: Unit -> Parser Type
 parseApplyType unit = do
@@ -134,10 +140,10 @@ parseMaybeTypedName =
 
 parseAtomicExpr :: Unit -> Parser Expr
 parseAtomicExpr unit = 
-  IdentExpr <$> parseIdent <|> 
   IntExpr <$> parseInt <|> 
   CharExpr <$> parseChar <|> 
   StringExpr <$> parseString <|> 
+  IdentExpr <$> parseIdent <|> 
   parseParens parseExpr
 
 parseApplyExpr :: Parser (List Expr)
