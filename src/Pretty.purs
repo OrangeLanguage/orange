@@ -47,9 +47,8 @@ exprDoc (OpExpr expr ops) =
   exprDoc expr <> 
   fold (map (\(Tuple name e) -> txt (" " <> name <> " ") <> exprDoc e) ops)
 exprDoc (BlockExpr exprs) = 
-  txt "{" <> 
-  group (nest 2 $ intercalate (txt "; ") $ map (exprDoc >>> ((<>) line)) exprs) <> 
-  line <> 
+  txt "{" <>
+  group (nest 2 (intercalate (txt ";") $ map (exprDoc >>> ((<>) line)) exprs) <> line) <>
   txt "}"
 exprDoc (LambdaExpr args expr) = 
   txt "\\" <> 
@@ -95,12 +94,33 @@ irDoc (IntIr int) = intDoc int
 irDoc (CharIr char) = text "green" $ show char
 irDoc (StringIr string) = text "green" $ show string
 irDoc (IdentIr name) = txt name
-irDoc (ApplyIr ir args) = irDoc ir <> txt "(" <> (group $ nest 2 $ intercalate (txt ", ") $ map (irDoc >>> ((<>) line)) args) <> txt ")"
-irDoc (BlockIr irs) = txt "{" <> (group $ nest 2 $ intercalate (txt "; ") $ map (irDoc >>> ((<>) line)) irs) <> txt "}"
-irDoc (LambdaIr args ir) = txt "\\" <> intercalate (txt ", ") (map txt args) <> txt " -> " <> (group $ nest 2 $ line <> irDoc ir)
-irDoc (DoIr ir) = text "blue" "do " <> irDoc ir
-irDoc (HandleIr ir cont) = text "blue" "handle " <> irDoc ir <> text "blue" " with " <> line <> irDoc cont
-irDoc (DefIr name ir) = text "blue" "def " <> txt (name <> " = ") <> irDoc ir
+irDoc (ApplyIr ir args) = 
+  irDoc ir <> 
+  txt "(" <> 
+  group (nest 2 $ intercalate (txt ", ") $ map (irDoc >>> ((<>) line)) args) <> 
+  txt ")"
+irDoc (BlockIr irs) = 
+  txt "{" <>
+  group (nest 2 (intercalate (txt ";") $ map (irDoc >>> ((<>) line)) irs) <> line) <>
+  txt "}"
+irDoc (LambdaIr args ir) = 
+  txt "\\" <> 
+  intercalate (txt ", ") (map txt args) <> 
+  txt " -> " <> 
+  group (nest 2 $ line <> irDoc ir)
+irDoc (DoIr ir) = 
+  text "blue" "do " <> 
+  irDoc ir
+irDoc (HandleIr ir cont) = 
+  text "blue" "handle " <> 
+  irDoc ir <> 
+  text "blue" " with " <> 
+  line <> 
+  irDoc cont
+irDoc (DefIr name ir) = 
+  text "blue" "def " <> 
+  txt (name <> " = ") <> 
+  irDoc ir
 
 showIr :: Int -> Ir -> String
 showIr width ir = pretty width $ group $ irDoc ir
