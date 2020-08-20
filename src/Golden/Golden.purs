@@ -33,10 +33,14 @@ runSuite tests = do
 defaultResultHandler :: Diff -> Effect Unit
 defaultResultHandler diffs = do
     if Array.length diffs == 0
-    then do
-      log $ colorize "green" "PASSED"
+    then log $ colorize "green" "PASSED"
     else do
       log $ colorize "red" "FAILED"
+      traverse_ printDiff diffs
+    where
+      printDiff diff = log $ if diff.added
+        then colorize "green" $ "+ " <> diff.value
+        else colorize "red" $ "- "  <> diff.value
 
 fileTest :: String -> FilePath -> (String -> Effect String) -> (Diff -> Effect Unit) -> Test
 fileTest name file test diffHandler = mkTest do
@@ -50,9 +54,8 @@ fileTest name file test diffHandler = mkTest do
     expectedOutput <- readTextFile UTF8 goldenFile
     diffHandler $ diffImpl testOutput expectedOutput
   else do
-    log $ "Creating new .golden file " <> (colorize "yellow" $ "'" <> goldenFile <> "'")
+    log $ "+ " <> (colorize "yellow" $ "'" <> goldenFile <> "'")
     writeTextFile UTF8 goldenFile testOutput
-
 
 basic :: String -> FilePath -> (String -> Effect String) -> Test
 basic name file inputHandler = fileTest name file inputHandler defaultResultHandler
