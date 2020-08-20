@@ -52,7 +52,7 @@ fileTest name file test diffHandler = mkTest do
   if goldenExists
   then do
     expectedOutput <- readTextFile UTF8 goldenFile
-    diffHandler $ diffImpl testOutput expectedOutput
+    diffHandler $ diffImpl expectedOutput testOutput
   else do
     log $ "+ " <> (colorize "yellow" $ "'" <> goldenFile <> "'")
     writeTextFile UTF8 goldenFile testOutput
