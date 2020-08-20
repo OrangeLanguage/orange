@@ -193,6 +193,18 @@ parseInfix = do
   expr <- parseExpr unit
   pure $ InfixExpr assoc op int expr
 
+parseClass :: Parser Expr
+parseClass = do
+  void $ string "class"
+  ignored
+  name <- parseIdent
+  void $ char '('
+  ignored
+  args <- sepBy parseIdent (char ',' *> ignored)
+  void $ char ')'
+  ignored
+  pure $ ClassExpr name args
+
 parseExtern :: Parser Expr
 parseExtern = do
   void $ string "extern"
@@ -201,7 +213,7 @@ parseExtern = do
   pure $ ExternExpr name
 
 parseExpr :: Unit -> Parser Expr
-parseExpr unit = parseBlock <|> parseDo <|> parseHandle <|> parseDef <|> parseInfix <|> parseExtern <|> try parseLambda <|> parseOperators unit
+parseExpr unit = parseBlock <|> parseDo <|> parseHandle <|> parseDef <|> parseInfix <|> parseClass <|> parseExtern <|> try parseLambda <|> parseOperators unit
 
 parseRepl :: Parser (Maybe Expr)
 parseRepl = do

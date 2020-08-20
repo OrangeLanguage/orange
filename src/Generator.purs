@@ -23,7 +23,7 @@ generateDoc (BlockIr irs) =
   txt "}"
 generateDoc (LambdaIr args ir) = 
   txt "function _(" <> 
-  intercalate (txt ", ") (txt "_handle" : (map txt args)) <> 
+  intercalate (txt ", ") (txt "_handle" : map txt args) <> 
   txt ") {" <>
   nest 2 (
     line <>
@@ -58,6 +58,21 @@ generateDoc (DefIr name ir) =
   txt " = " <>
   generateDoc ir <>
   txt ";"
+generateDoc (ClassIr name args) =
+  txt "const " <> 
+  txt name <>
+  txt " = function _(" <>
+  intercalate (txt ", ") (txt "_handle" : map txt args) <> 
+  txt ") {" <>
+  nest 2 (
+    line <>
+    txt "return {type: " <>
+    txt name <>
+    txt ", " <>
+    intercalate (txt ", ") (map txt args) <>
+    txt "};") <>
+  line <>
+  txt "}"
 
 generate :: Int -> Ir -> String
 generate width ir = pretty width $ group $ generateDoc ir

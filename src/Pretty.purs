@@ -61,6 +61,12 @@ exprDoc (InfixExpr assoc op int expr) =
 exprDoc (ExternExpr name) = 
   text "blue" "extern " <> 
   txt name
+exprDoc (ClassExpr name args) =
+  text "blue" "class " <>
+  txt name <>
+  txt "(" <>
+  intercalate (txt ", ") (map txt args) <> 
+  txt ")"
 
 showExpr :: Int -> Expr -> String
 showExpr width expr = pretty width $ group $ exprDoc expr
@@ -95,8 +101,15 @@ irDoc (HandleIr ir cont) =
   irDoc cont
 irDoc (DefIr name ir) = 
   text "blue" "def " <> 
-  txt (name <> " = ") <> 
+  txt name <>
+  txt " = " <> 
   irDoc ir
+irDoc (ClassIr name args) =
+  text "blue" "class " <>
+  txt name <>
+  txt "(" <>
+  intercalate (txt ", ") (map txt args) <> 
+  txt ")"
 
 showIr :: Int -> Ir -> String
 showIr width ir = pretty width $ group $ irDoc ir

@@ -101,22 +101,25 @@ compile (DefExpr name expr) = do
 compile (InfixExpr assoc name prec expr) = do
   void $ modify $ insertOp assoc name prec expr
   compile expr
+compile (ClassExpr name args) = do
+  void $ modify $ insertDef name
+  pure $ ClassIr name args
 compile (ExternExpr name) = do
   void $ modify $ insertDef name
   pure $ IdentIr name
 
 applyOps :: forall m. (MonadError String m) => List (Tuple Op Expr) -> List Op -> List Expr -> m Expr
 applyOps Nil Nil (expr : Nil) = pure expr
-applyOps Nil ((Op assoc proc expr) : ops) (right : left : exprs) = applyOps Nil ops ((ApplyExpr expr (left : right : Nil)) : exprs)
+applyOps Nil ((Op assoc proc expr) : ops) (right : left : exprs) = applyOps Nil ops $ (ApplyExpr expr (left : right : Nil)) : exprs
 applyOps ((Tuple op expr) : rest) ops exprs = do 
   (Tuple ops' exprs') <- runOp op ops exprs
-  applyOps rest ops' (expr : exprs')
+  applyOps rest ops' $ expr : exprs'
 applyOps _ _ _ = throwError "Invalid operator state" 
 
 runOp :: forall m. (MonadError String m) => Op -> List Op -> List Expr -> m (Tuple (List Op) (List Expr))
 runOp op Nil exprs = pure $ Tuple (op : Nil) exprs
 runOp op@(Op assoc opPrec expr) (pop@(Op _ popPrec _) : ops) (right : left : exprs) =  
   if popPrec > opPrec || (popPrec == opPrec && assoc == LeftAssoc)
-  then runOp op ops ((ApplyExpr expr (left : right : Nil)) : exprs)
+  then runOp op ops $ (ApplyExpr expr (left : right : Nil)) : exprs
   else pure $ Tuple (op : pop : ops) (left : right : exprs)
 runOp _ _ _ = throwError "Invalid operator state" 

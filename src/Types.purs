@@ -23,6 +23,7 @@ data Expr
   | HandleExpr Expr Expr
   | DefExpr String Expr
   | InfixExpr Assoc String BigInt Expr
+  | ClassExpr String (List String)
   | ExternExpr String
 
 data Ir
@@ -36,5 +37,6 @@ data Ir
   | DoIr Ir
   | HandleIr Ir Ir
   | DefIr String Ir
+  | ClassIr String (List String)
 
 derive instance eqAssoc :: Eq Assoc
