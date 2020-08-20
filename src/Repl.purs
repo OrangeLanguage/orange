@@ -8,9 +8,8 @@ import Control.Monad.Cont (ContT(..), runContT)
 import Control.Monad.Error.Class (class MonadError, class MonadThrow, catchError, throwError, try)
 import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, ask, lift, runReaderT)
-import Data.Bifunctor (lmap)
 import Data.Char.Unicode (isSpace)
-import Data.Either (Either, either)
+import Data.Either (either)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.String (drop, length)
@@ -20,7 +19,7 @@ import Effect (Effect)
 import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Class.Console (log, logShow)
 import Effect.Exception (Error) as Js
-import Effect.Exception (error, message, throw)
+import Effect.Exception (message, throw)
 import Generator as Generator
 import Node.Encoding (Encoding(..))
 import Node.FS.Sync (readTextFile)
@@ -30,16 +29,16 @@ import Parse (incremental, parseRepl)
 import Prettier.Printer (colorize)
 import Pretty (showExpr, showIr)
 import Text.Parsing.Parser (ParseError, ParserT, hoistParserT, runParserT)
-import Types (Expr)
+import Types (Expr, Ir)
 
-data ReplError e = Parse ParseError | Generic String | Native e
+data ReplError = Parse ParseError | Generic String | Native Js.Error
 
-instance showReplError :: Show e => Show (ReplError e) where
+instance showReplError :: Show ReplError where
   show (Parse e) = show e
   show (Generic s) = s
-  show (Native er) = show er
+  show (Native e) = show e
 
-newtype NodeRepl a = NodeRepl (ReaderT Interface (ExceptT Js.Error (CompilerT (ContT Unit Effect))) a)
+newtype NodeRepl a = NodeRepl (ReaderT Interface (ExceptT ReplError (CompilerT (ContT Unit Effect))) a)
 
 derive instance newtypeNodeRepl :: Newtype (NodeRepl a) _
 derive newtype instance functorNodeRepl :: Functor NodeRepl
@@ -50,33 +49,34 @@ derive newtype instance monadNodeRepl :: Monad NodeRepl
 derive newtype instance monadEffectNodeRepl :: MonadEffect NodeRepl
 derive newtype instance monadAskNodeRepl :: MonadAsk Interface NodeRepl
 derive newtype instance monadReaderNodeRepl :: MonadReader Interface NodeRepl
-derive newtype instance monadErrorNodeRepl :: MonadError Js.Error NodeRepl
-derive newtype instance monadThrowNodeRepl :: MonadThrow Js.Error NodeRepl
+derive newtype instance monadErrorNodeRepl :: MonadError ReplError NodeRepl
+derive newtype instance monadThrowNodeRepl :: MonadThrow ReplError NodeRepl
+
+tryCompile :: String -> NodeRepl Ir
+tryCompile program = do
+  tree <- parse program
+  tryCompiler $ Compiler.compile tree
 
 tryCompiler :: forall a. Compiler a -> NodeRepl a
-tryCompiler ca = do
-  result <- liftCompiler $ catchError (ca <#> pure) (\e -> pure $ throwError $ error e)
-  result
+tryCompiler ca = join $ liftCompiler $ catchError (ca <#> pure) (pure <<< throwError <<< Generic)
 
 liftCompiler :: forall a. Compiler a -> NodeRepl a
 liftCompiler comp = NodeRepl $ lift $ lift $ transformCompilerT (unwrap >>> pure) comp
 
 evalNodeRepl :: forall a. NodeRepl a -> Effect Unit
-evalNodeRepl (NodeRepl n) = do
+evalNodeRepl nodeRepl = do
   interface <- createConsoleInterface noCompletion
-  void $ runContT (runCompilerT (runExceptT $ runReaderT n interface) (Env 0 mempty mempty)) $ either throw (const $ pure unit)
-
-handleError :: ReplError Js.Error -> NodeRepl Unit
-handleError (Native err) = log $ message err
-handleError err = logShow err
+  void $ runContT (runCompilerT (runExceptT $ runReaderT (unwrap nodeRepl) interface) (Env 0 mempty mempty)) $ either throw (const $ pure unit)
 
 query :: String -> NodeRepl String
 query prompt = do
   iface <- ask
   NodeRepl $ lift $ lift $ lift $ ContT \cont -> question prompt cont iface
 
-print :: Expr -> NodeRepl Unit
-print tree = log $ showExpr 40 tree
+print :: String -> NodeRepl Unit
+print expr = do
+  tree <- parse expr
+  log $ showExpr 40 tree
 
 more :: NodeRepl String
 more = query "       > " <#> append "\n"
@@ -84,23 +84,25 @@ more = query "       > " <#> append "\n"
 input :: NodeRepl String
 input = query $ colorize "orange" "orange" <> " > "
 
-parse :: String -> NodeRepl (Maybe Expr)
+parse :: String -> NodeRepl Expr
 parse line = do
   let parser = incremental more $ (hoistParserT (unwrap >>> pure) parseRepl :: ParserT String NodeRepl (Maybe Expr))
   result <- runParserT line parser
-  handle Nothing $ lmap Parse result
-    where 
-      handle :: forall a. a -> Either (ReplError Js.Error) a -> NodeRepl a
-      handle default result = either (\err -> handleError err *> pure default) pure result
+  maybeResult <- either (throwError <<< Parse) pure result
+  maybe (throwError $ Generic "Unable to parse") pure maybeResult
 
-compile :: Expr -> NodeRepl Unit
-compile tree = do
-  ir <- tryCompiler $ Compiler.compile tree
+handleError :: ReplError -> NodeRepl Unit
+handleError (Native err) = log $ message err
+handleError err = logShow err
+
+compile :: String -> NodeRepl Unit
+compile expr = do
+  ir <- tryCompile expr
   log $ showIr 40 ir
 
-generate :: Expr -> NodeRepl Unit
+generate :: String -> NodeRepl Unit
 generate expr = do
-  ir <- tryCompiler $ Compiler.compile expr
+  ir <- tryCompile expr
   log $ Generator.generate 0 ir
 
 process :: String -> NodeRepl Unit
@@ -108,28 +110,18 @@ process line = case uncons line of
   Just ({ head: ':', tail: tail }) -> do
     let (Tuple command expr) = break tail
     case command of
-      "compile" -> do
-        tree <- parse expr
-        maybe (pure unit) compile tree
-      "parse" -> do
-        tree <- parse expr
-        maybe (pure unit) print tree
-      "generate" -> do
-        tree <- parse expr
-        maybe (pure unit) generate tree
-      "load" -> do
-        loadFile expr
-      "eval" -> do
-        log "eval not implemented"
+      "compile" -> compile expr
+      "parse" -> print expr
+      "generate" -> generate expr
+      "load" -> loadFile expr
+      "eval" -> log "eval not implemented"
       _ -> handleError $ Generic $ "Unknown command " <> command
-  _ -> do
-    tree <- parse line
-    maybe (pure unit) compile tree
+  _ -> compile line
 
 repl ::  NodeRepl Unit
 repl = do
   userInput <- input
-  catchError (process userInput) logShow
+  catchError (process userInput) handleError
   repl
 
 break :: String -> Tuple String String
@@ -141,6 +133,6 @@ break s =
 loadFile :: FilePath -> NodeRepl Unit
 loadFile path = do
   readResult <- liftEffect $ try $ readTextFile UTF8 path
-  chars <- either throwError pure readResult
+  chars <- either (throwError <<< Native) pure readResult
   expr <- parse chars
-  maybe (pure unit) (void <<< tryCompiler <<< Compiler.compile) expr
+  void $ tryCompiler $ Compiler.compile expr
