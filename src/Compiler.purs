@@ -3,10 +3,10 @@ module Compiler where
 import Prelude
 
 import Control.Monad.Error.Class (class MonadError, class MonadThrow)
-import Control.Monad.Except (ExceptT, runExceptT, throwError)
-import Control.Monad.State (class MonadState, StateT, evalStateT, get, modify, put)
+import Control.Monad.Except (class MonadTrans, ExceptT(..), mapExceptT, runExceptT, throwError)
+import Control.Monad.State (class MonadState, StateT(..), evalStateT, execStateT, get, mapStateT, modify, put)
 import Data.BigInt (BigInt)
-import Data.Either (Either)
+import Data.Either (Either(..))
 import Data.Foldable (foldr)
 import Data.Identity (Identity)
 import Data.List (List(..), last, zip, (:))
@@ -22,22 +22,34 @@ import Types (Assoc(..), Expr(..), Ir(..), Op(..), Type(..))
 newtype CompilerT m a = CompilerT (StateT Env (ExceptT String m) a)
 type Compiler a = CompilerT Identity a
 
-derive instance newtypeCompiler :: Newtype (CompilerT m a) _
-derive newtype instance monadErrorCompiler :: Monad m => MonadError String (CompilerT m)
-derive newtype instance functorCompiler :: Functor m => Functor (CompilerT m)
-derive newtype instance applyCompiler :: Monad m => Apply (CompilerT m)
-derive newtype instance applicativeCompiler :: Monad m => Applicative (CompilerT m)
-derive newtype instance monadCompiler :: Monad m => Monad (CompilerT m) 
-derive newtype instance monadStateCompiler :: Monad m => MonadState Env (CompilerT m)
-derive newtype instance monadEffectCompiler :: MonadEffect m => MonadEffect (CompilerT m)
-derive newtype instance monadThrowCompiler :: Monad m => MonadThrow String (CompilerT m)
-derive newtype instance bindCompiler :: Monad m => Bind (CompilerT m)
+derive instance newtypeCompilerT :: Newtype (CompilerT m a) _
+derive newtype instance monadErrorCompilerT :: Monad m => MonadError String (CompilerT m)
+derive newtype instance functorCompilerT :: Functor m => Functor (CompilerT m)
+derive newtype instance applyCompilerT :: Monad m => Apply (CompilerT m)
+derive newtype instance applicativeCompilerT :: Monad m => Applicative (CompilerT m)
+derive newtype instance monadCompilerT :: Monad m => Monad (CompilerT m) 
+derive newtype instance monadStateCompilerT :: Monad m => MonadState Env (CompilerT m)
+derive newtype instance monadEffectCompilerT :: MonadEffect m => MonadEffect (CompilerT m)
+derive newtype instance monadThrowCompilerT :: Monad m => MonadThrow String (CompilerT m)
+derive newtype instance bindCompilerT :: Monad m => Bind (CompilerT m)
 
-runCompilerT :: forall m a. Monad m => CompilerT m a -> Env -> m (Either String a)
-runCompilerT compiler env = runExceptT $ evalStateT (unwrap compiler) env
+instance monadTransCompilerT :: MonadTrans CompilerT where
+  lift ma = CompilerT $ StateT \s -> ExceptT $ ma <#> \a -> Right $ Tuple a s
 
-runCompiler :: forall a. Compiler a -> Env -> Either String a
+mapCompilerT :: forall m n a. Monad m => Monad n => (forall b. m b -> n b) -> CompilerT m a -> CompilerT n a
+mapCompilerT f (CompilerT c) = CompilerT $ mapStateT (mapExceptT f) c
+
+runCompilerT :: forall m a. Monad m => CompilerT m a -> Env -> m (Either String Env)
+runCompilerT compiler env = runExceptT $ execStateT (unwrap compiler) env
+
+runCompiler :: forall a. Compiler a -> Env -> Either String Env
 runCompiler compiler env = unwrap $ runCompilerT compiler env
+
+evalCompilerT :: forall m a. Monad m => CompilerT m a -> Env -> m (Either String a)
+evalCompilerT compiler env = runExceptT $ evalStateT (unwrap compiler) env
+
+evalCompiler :: forall a. Compiler a -> Env -> Either String a
+evalCompiler compiler env = unwrap $ evalCompilerT compiler env
 
 data Env = Env Int (Map String Type) (Map String Type) (Map String Op)
 
