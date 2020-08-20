@@ -12,6 +12,12 @@ generateDoc (IntIr int) = txt $ toString int
 generateDoc (CharIr char) = txt $ show char
 generateDoc (StringIr string) = txt $ show string
 generateDoc (IdentIr name) = txt name
+generateDoc (DotIr ir name) =
+  txt "(" <>
+  generateDoc ir <>
+  txt "." <>
+  txt name <>
+  txt ")"
 generateDoc (ApplyIr ir args) =
   generateDoc ir <> 
   txt "(" <> 

@@ -82,6 +82,7 @@ compileCont (IdentExpr name) f = do
   case lookupDef name env of
     Nothing -> throwError $ "Undefined " <> name
     Just unit -> f $ IdentIr name
+compileCont (DotExpr expr name) f = compileCont expr \ir -> f $ DotIr ir name
 compileCont (ApplyExpr fun args) f = compileCont fun \funIr -> compileConts args \argsIr -> f $ ApplyIr funIr argsIr
 compileCont (OpExpr expr operators) f = do
   env <- get
@@ -142,8 +143,8 @@ applyOps _ _ _ = throwError "Invalid operator state"
 
 runOp :: forall m. (MonadError String m) => Op -> List Op -> List Expr -> m (Tuple (List Op) (List Expr))
 runOp op Nil exprs = pure $ Tuple (op : Nil) exprs
-runOp op@(Op assoc opPrec expr) (pop@(Op _ popPrec _) : ops) (right : left : exprs) =  
+runOp op@(Op assoc opPrec _) (pop@(Op _ popPrec expr) : ops) (right : left : exprs) =  
   if popPrec > opPrec || (popPrec == opPrec && assoc == LeftAssoc)
   then runOp op ops $ (ApplyExpr expr (left : right : Nil)) : exprs
-  else pure $ Tuple (op : pop : ops) (left : right : exprs)
+  else pure $ Tuple (op : pop : ops) (right : left : exprs)
 runOp _ _ _ = throwError "Invalid operator state" 

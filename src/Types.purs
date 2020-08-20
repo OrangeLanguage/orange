@@ -16,6 +16,7 @@ data Expr
   | CharExpr Char
   | StringExpr String
   | IdentExpr String
+  | DotExpr Expr String
   | ApplyExpr Expr (List Expr)
   | OpExpr Expr (List (Tuple String Expr))
   | BlockExpr (List Expr)
@@ -32,6 +33,7 @@ data Ir
   | CharIr Char
   | StringIr String
   | IdentIr String
+  | DotIr Ir String
   | ApplyIr Ir (List Ir)
   | BlockIr (List Ir)
   | LambdaIr (List String) Ir

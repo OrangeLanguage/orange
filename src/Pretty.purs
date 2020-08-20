@@ -22,6 +22,10 @@ exprDoc (IntExpr int) = intDoc int
 exprDoc (CharExpr char) = text "green" $ show char
 exprDoc (StringExpr string) = text "green" $ show string
 exprDoc (IdentExpr name) = txt name
+exprDoc (DotExpr expr name) =
+  exprDoc expr <>
+  txt "." <>
+  txt name
 exprDoc (ApplyExpr expr args) = 
   exprDoc expr <> 
   txt "(" <> 
@@ -78,6 +82,12 @@ irDoc (IntIr int) = intDoc int
 irDoc (CharIr char) = text "green" $ show char
 irDoc (StringIr string) = text "green" $ show string
 irDoc (IdentIr name) = txt name
+irDoc (DotIr ir name) =
+  txt "(" <>
+  irDoc ir <>
+  txt "." <>
+  txt name <>
+  txt ")"
 irDoc (ApplyIr ir args) = 
   irDoc ir <> 
   txt "(" <> 
@@ -88,35 +98,45 @@ irDoc (BlockIr irs) =
   group (nest 2 (intercalate (txt ";") $ map (irDoc >>> ((<>) line)) irs) <> line) <>
   txt "}"
 irDoc (LambdaIr args ir) = 
+  txt "(" <>
   txt "\\" <> 
   intercalate (txt ", ") (map txt args) <> 
   txt " -> " <> 
-  group (nest 2 $ line <> irDoc ir)
+  group (nest 2 $ line <> irDoc ir) <>
+  txt ")"
 irDoc (DoIr ir name cont) = 
   text "blue" "do " <> 
   txt (name <> " = ") <> 
   irDoc ir <> 
   text "blue" " in " <> 
   line <> 
-  irDoc cont
+  txt "(" <>
+  irDoc cont <>
+  txt ")"
 irDoc (HandleIr ir cont) = 
   text "blue" "handle " <> 
   irDoc ir <> 
   text "blue" " with " <> 
   line <> 
-  irDoc cont
+  txt "(" <>
+  irDoc cont <>
+  txt ")"
 irDoc (DefIr name ir) = 
   text "blue" "def " <> 
   txt name <>
   txt " = " <> 
-  irDoc ir
+  txt "(" <>
+  irDoc ir <>
+  txt ")"
 irDoc (ExtendIr clazz name ir) = 
   text "blue" "extend " <> 
   txt clazz <>
   txt " " <>
   txt name <>
   txt " = " <> 
-  irDoc ir
+  txt "(" <>
+  irDoc ir <>
+  txt ")"
 irDoc (ClassIr name args) =
   text "blue" "class " <>
   txt name <>

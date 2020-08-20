@@ -85,16 +85,23 @@ parseParens parser = do
   ignored
   pure a
 
-parseAtomicExpr :: Unit -> Parser Expr
-parseAtomicExpr unit = 
+parseAtomic :: Unit -> Parser Expr
+parseAtomic unit = 
   IntExpr <$> parseInt <|> 
   CharExpr <$> parseChar <|> 
   StringExpr <$> parseString <|> 
   IdentExpr <$> parseIdent <|> 
   parseParens parseExpr
 
-parseApplyExpr :: Parser (List Expr)
-parseApplyExpr = do 
+parseDot :: Parser (Expr -> Expr)
+parseDot = do
+  void $ char '.'
+  ignored
+  name <- parseIdent
+  pure $ \e -> DotExpr e name
+
+parseApply :: Parser (Expr -> Expr)
+parseApply = do 
   void $ char '('
   ignored
   args <- sepBy (parseExpr unit) (char ',' *> ignored)
@@ -102,32 +109,32 @@ parseApplyExpr = do
   ignored
   last <- option Nothing $ Just <$> parseBlock
   pure $ case last of
-    Nothing -> args
-    Just expr -> snoc args expr
+    Nothing -> \e -> ApplyExpr e args
+    Just expr -> \e -> ApplyExpr e $ snoc args expr
 
-parseApplies :: Unit -> Parser Expr
-parseApplies unit = do
-  expr <- parseAtomicExpr unit
-  applies <- many parseApplyExpr
-  pure $ foldl ApplyExpr expr applies
+parseTrail :: Unit -> Parser Expr
+parseTrail unit = do
+  expr <- parseAtomic unit
+  trails <- many (parseApply <|> parseDot)
+  pure $ foldl (\f g -> g f) expr trails
 
 parseOp :: Parser String
 parseOp = do
   name <- fromCharArray <$> Array.some (oneOf $ toCharArray "~`!@$%^&*-=+\\|:<>.?/")
   ignored
-  if name == "->"
-    then fail "Reserved operator ->" 
+  if name == "->" || name == "."
+    then fail $ "Reserved operator " <> name 
     else pure name
 
 parseOperator :: Parser (Tuple String Expr)
 parseOperator = do
   name <- parseOp
-  expr <- parseApplies unit
+  expr <- parseTrail unit
   pure $ Tuple name expr
 
 parseOperators :: Unit -> Parser Expr
 parseOperators unit = do
-  expr <- parseApplies unit
+  expr <- parseTrail unit
   operators <- many parseOperator
   pure $ if List.null operators
     then expr
@@ -163,7 +170,7 @@ parseHandle :: Parser Expr
 parseHandle = do
   void $ string "handle"
   ignored
-  expr <- parseAtomicExpr unit
+  expr <- parseAtomic unit
   cont <- parseExpr unit
   pure $ HandleExpr expr cont
 
