@@ -52,10 +52,10 @@ derive newtype instance monadReaderNodeRepl :: MonadReader Interface NodeRepl
 derive newtype instance monadErrorNodeRepl :: MonadError ReplError NodeRepl
 derive newtype instance monadThrowNodeRepl :: MonadThrow ReplError NodeRepl
 
-tryCompile :: String -> NodeRepl Ir
+tryCompile :: String -> NodeRepl (Maybe Ir)
 tryCompile program = do
   tree <- parse program
-  tryCompiler $ Compiler.compile tree
+  maybe (pure Nothing) (\tree -> tryCompiler $ Compiler.compile tree <#> Just) tree
 
 tryCompiler :: forall a. Compiler a -> NodeRepl a
 tryCompiler ca = join $ liftCompiler $ catchError (ca <#> pure) (pure <<< throwError <<< Generic)
@@ -76,7 +76,7 @@ query prompt = do
 print :: String -> NodeRepl Unit
 print expr = do
   tree <- parse expr
-  log $ showExpr 40 tree
+  maybe (pure unit) (log <<< showExpr 40) tree
 
 more :: NodeRepl String
 more = query "       > " <#> append "\n"
@@ -84,26 +84,25 @@ more = query "       > " <#> append "\n"
 input :: NodeRepl String
 input = query $ colorize "orange" "orange" <> " > "
 
-parse :: String -> NodeRepl Expr
+parse :: String -> NodeRepl (Maybe Expr)
 parse line = do
   let parser = incremental more $ (hoistParserT (unwrap >>> pure) parseRepl :: ParserT String NodeRepl (Maybe Expr))
   result <- runParserT line parser
-  maybeResult <- either (throwError <<< Parse) pure result
-  maybe (throwError $ Generic "Unable to parse") pure maybeResult
+  either (throwError <<< Parse) pure result
 
 handleError :: ReplError -> NodeRepl Unit
 handleError (Native err) = log $ message err
 handleError err = logShow err
-
+ 
 compile :: String -> NodeRepl Unit
 compile expr = do
   ir <- tryCompile expr
-  log $ showIr 40 ir
+  maybe (pure unit) (log <<< showIr 40) ir
 
 generate :: String -> NodeRepl Unit
 generate expr = do
   ir <- tryCompile expr
-  log $ Generator.generate 0 ir
+  maybe (pure unit) (log <<< Generator.generate 0) ir
 
 process :: String -> NodeRepl Unit
 process line = case uncons line of
@@ -135,4 +134,4 @@ loadFile path = do
   readResult <- liftEffect $ try $ readTextFile UTF8 path
   chars <- either (throwError <<< Native) pure readResult
   expr <- parse chars
-  void $ tryCompiler $ Compiler.compile expr
+  maybe (pure unit) (void <<< tryCompiler <<< Compiler.compile) expr
