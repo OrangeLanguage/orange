@@ -16,7 +16,6 @@ import Data.Newtype (class Newtype, unwrap)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
 import Effect.Class (class MonadEffect)
-import Pretty (showExpr)
 import Types (Assoc(..), Expr(..), Ir(..), Op(..))
 
 newtype CompilerT m a = CompilerT (StateT Env (ExceptT String m) a)
