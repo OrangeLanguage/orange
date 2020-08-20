@@ -17,3 +17,9 @@ npm install
 spago build
 npm run repl
 ```
+
+### Run tests
+
+```bash
+spago test
+```

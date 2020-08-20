@@ -2,9 +2,17 @@ module Generator where
 
 import Prelude
 
+import Compiler (Env(..), evalCompiler, runCompiler)
+import Compiler as Compiler
 import Data.BigInt (toString)
+import Data.Either (either)
 import Data.List (fold, intercalate, (:))
+import Data.Traversable (traverse)
+import Effect.Exception (throw)
+import Orange.Golden as Golden
+import Parse (parseProgram)
 import Prettier.Printer (DOC, group, line, nest, pretty, txt)
+import Text.Parsing.Parser (runParser)
 import Types (Ir(..))
 
 generateDoc :: Ir -> DOC
@@ -103,3 +111,12 @@ generateDoc (ClassIr name args) =
 
 generate :: Int -> Ir -> String
 generate width ir = pretty width $ group $ generateDoc ir
+
+basicGeneratorTest :: Golden.Test
+basicGeneratorTest = Golden.basic "basic generation" "test/golden/basic-generation.oj" \input -> do
+  let parseResult = runParser input parseProgram
+  exprs <- either (const $ throw "Unable to parse") pure parseResult
+  let compileResult = evalCompiler (traverse Compiler.compile exprs) (Env 0 mempty mempty)
+  ir <- either (const $ throw "Unable to compile") pure compileResult
+  results <- traverse (generate 0 >>> pure) ir
+  pure $ intercalate "\n" results

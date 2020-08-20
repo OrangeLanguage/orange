@@ -14,6 +14,7 @@ import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.String (drop, length)
 import Data.String.CodeUnits (takeWhile, uncons)
+import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Effect.Class (class MonadEffect, liftEffect)
@@ -25,10 +26,10 @@ import Node.Encoding (Encoding(..))
 import Node.FS.Sync (readTextFile)
 import Node.Path (FilePath)
 import Node.ReadLine (Interface, createConsoleInterface, noCompletion, question)
-import Parse (incremental, parseRepl)
+import Parse (incremental, parseProgram, parseRepl)
 import Prettier.Printer (colorize)
 import Pretty (showExpr, showIr)
-import Text.Parsing.Parser (ParseError, ParserT, hoistParserT, runParserT)
+import Text.Parsing.Parser (ParseError, ParserT, hoistParserT, runParser, runParserT)
 import Types (Expr, Ir)
 
 data ReplError = Parse ParseError | Generic String | Native Js.Error
@@ -133,5 +134,6 @@ loadFile :: FilePath -> NodeRepl Unit
 loadFile path = do
   readResult <- liftEffect $ try $ readTextFile UTF8 path
   chars <- either (throwError <<< Native) pure readResult
-  expr <- parse chars
-  maybe (pure unit) (void <<< tryCompiler <<< Compiler.compile) expr
+  let parseResult = runParser chars parseProgram
+  exprs <- either (throwError <<< Parse) pure parseResult
+  void $ traverse (tryCompiler <<< Compiler.compile) exprs
