@@ -15,18 +15,18 @@ type Diff = Array { added :: Boolean, removed :: Boolean, value :: String }
 
 foreign import diffImpl :: String -> String -> Diff
 
-newtype Golden = Golden { runTest :: Effect Unit  }
+newtype Test = Test { runTest :: Effect Unit  }
 
 goldenTestPath :: FilePath -> FilePath
 goldenTestPath path = path <> ".golden"
 
-mkTest :: Effect Unit -> Golden
-mkTest runTest = Golden { runTest }
+mkTest :: Effect Unit -> Test
+mkTest runTest = Test { runTest }
 
-run :: Golden -> Effect Unit
-run (Golden { runTest }) = runTest
+run :: Test -> Effect Unit
+run (Test { runTest }) = runTest
 
-runSuite :: Array Golden -> Effect Unit
+runSuite :: Array Test -> Effect Unit
 runSuite tests = do
   traverse_ run tests
 
@@ -38,7 +38,7 @@ defaultResultHandler diffs = do
     else do
       log $ colorize "red" "FAILED"
 
-fileTest :: String -> FilePath -> (String -> Effect String) -> (Diff -> Effect Unit) -> Golden
+fileTest :: String -> FilePath -> (String -> Effect String) -> (Diff -> Effect Unit) -> Test
 fileTest name file test diffHandler = mkTest do
   log $ name <> " <-" <> (colorize "yellow" $ "'" <> file <> "'")
   fileContents <- readTextFile UTF8 file
@@ -54,5 +54,5 @@ fileTest name file test diffHandler = mkTest do
     writeTextFile UTF8 goldenFile testOutput
 
 
-basic :: String -> FilePath -> (String -> Effect String) -> Golden
-basic name file handler = fileTest name file handler defaultResultHandler
+basic :: String -> FilePath -> (String -> Effect String) -> Test
+basic name file inputHandler = fileTest name file inputHandler defaultResultHandler
