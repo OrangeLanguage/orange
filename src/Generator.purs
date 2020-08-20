@@ -2,18 +2,16 @@ module Generator where
 
 import Prelude
 
-import Compiler (Env(..), evalCompiler, runCompiler)
+import Compiler (Env(..), evalCompiler)
 import Compiler as Compiler
 import Data.BigInt (toString)
 import Data.Either (either)
 import Data.List (fold, intercalate, (:))
-import Data.Traversable (traverse)
-import Effect.Class.Console (log, logShow)
 import Effect.Exception (throw)
+import Node.Path (FilePath)
 import Orange.Golden as Golden
 import Parse (parseProgram)
 import Prettier.Printer (DOC, group, line, nest, pretty, txt)
-import Pretty (showExpr)
 import Text.Parsing.Parser (runParser)
 import Types (Expr(..), Ir(..))
 
@@ -114,10 +112,16 @@ generateDoc (ClassIr name args) =
 generate :: Int -> Ir -> String
 generate width ir = pretty width $ group $ generateDoc ir
 
-basicGeneratorTest :: Golden.Test
-basicGeneratorTest = Golden.basic "basic generation" "test/golden/basic-generation.oj" \input -> do
+generatorTest :: String -> FilePath -> Golden.Test
+generatorTest name path = Golden.basic name path \input -> do
   let parseResult = runParser input parseProgram
-  exprs <- either (const $ throw "Unable to parse") pure parseResult
+  exprs <- either (\e -> throw $ show e) pure parseResult
   let compileResult = evalCompiler (Compiler.compile $ BlockExpr exprs) (Env 0 mempty mempty)
-  ir <- either (const $ throw "Unable to compile") pure compileResult
+  ir <- either (\e -> throw e) pure compileResult
   pure $ generate 0 ir
+
+basicGeneratorTest :: Golden.Test
+basicGeneratorTest = generatorTest "basic generation" "test/golden/basic-generation.oj"
+
+functionGeneratorTest :: Golden.Test
+functionGeneratorTest = generatorTest "function generation" "test/golden/function-generation.oj"
