@@ -24,9 +24,9 @@ generateDoc (ApplyIr ir args) =
   intercalate (txt ", ") (txt "_handle" : map generateDoc args) <> 
   txt ")"
 generateDoc (BlockIr irs) =
-  txt "{" <>
+  txt "function _() {" <>
   fold (map (\ir -> generateDoc ir <> txt ";" <> line) irs) <>
-  txt "}"
+  txt "}()"
 generateDoc (LambdaIr args ir) = 
   txt "function _(" <> 
   intercalate (txt ", ") (txt "_handle" : map txt args) <> 
