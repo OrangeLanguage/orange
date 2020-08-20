@@ -9,7 +9,7 @@ import Data.Array (foldl)
 import Data.Array as Array
 import Data.BigInt (BigInt, fromString)
 import Data.Either (Either)
-import Data.List (List, many, snoc)
+import Data.List (many, snoc)
 import Data.List (null) as List
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String.CodeUnits (fromCharArray, singleton, toCharArray)
