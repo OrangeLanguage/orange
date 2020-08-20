@@ -55,7 +55,7 @@ derive newtype instance monadThrowNodeRepl :: MonadThrow ReplError NodeRepl
 tryCompile :: String -> NodeRepl (Maybe Ir)
 tryCompile program = do
   tree <- parse program
-  maybe (pure Nothing) (\tree -> tryCompiler $ Compiler.compile tree <#> Just) tree
+  maybe (pure Nothing) (\t -> tryCompiler $ Compiler.compile t <#> Just) tree
 
 tryCompiler :: forall a. Compiler a -> NodeRepl a
 tryCompiler ca = join $ liftCompiler $ catchError (ca <#> pure) (pure <<< throwError <<< Generic)

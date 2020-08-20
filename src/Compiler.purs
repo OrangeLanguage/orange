@@ -71,54 +71,59 @@ fresh = do
   pure $ show i
 
 compile :: forall m. Monad m => Expr -> CompilerT m Ir
-compile (IntExpr int) = pure $ IntIr int
-compile (CharExpr char) = pure $ CharIr char
-compile (StringExpr string) = pure $ StringIr string
-compile (IdentExpr name) = do
+compile expr = compileCont expr pure 
+
+compileCont :: forall m. Monad m => Expr -> (Ir -> CompilerT m Ir) -> CompilerT m Ir
+compileCont (IntExpr int) f = f $ IntIr int
+compileCont (CharExpr char) f = f $ CharIr char
+compileCont (StringExpr string) f = f $ StringIr string
+compileCont (IdentExpr name) f = do
   env <- get
   case lookupDef name env of
     Nothing -> throwError $ "Undefined " <> name
-    Just unit -> pure $ IdentIr name
-compile (ApplyExpr fun args) = do
-  funIr <- compile fun
-  argsIrs <- traverse compile args
-  pure $ ApplyIr funIr argsIrs
-compile (OpExpr expr operators) = do
+    Just unit -> f $ IdentIr name
+compileCont (ApplyExpr fun args) f = compileCont fun \funIr -> compileConts args \argsIr -> f $ ApplyIr funIr argsIr
+compileCont (OpExpr expr operators) f = do
   env <- get
   ops <- traverse (\(Tuple name e) -> case lookupOp name env of
     Nothing -> throwError $ "Undefined " <> name
     Just op -> pure $ Tuple op e) operators
   apply <- applyOps ops Nil (expr : Nil)
-  compile apply
-compile (BlockExpr exprs) = do
-  compiles <- traverse compile exprs
-  pure $ BlockIr compiles
-compile (LambdaExpr args expr) = do
+  compileCont apply f
+compileCont (BlockExpr exprs) f = compileConts exprs \irs -> f $ BlockIr irs
+compileCont (LambdaExpr args expr) f = do
   env <- get
   put $ foldr insertDef env args
   exprIr <- compile expr
   put env
-  pure $ LambdaIr args exprIr
-compile (DoExpr expr) = do
+  f $ LambdaIr args exprIr
+compileCont (DoExpr expr) f = do
+  name <- fresh
+  cont <- f $ IdentIr name
+  compileCont expr (\ir -> pure $ DoIr ir name cont)
+compileCont (HandleExpr expr cont) f = do
   ir <- compile expr
-  pure $ DoIr ir
-compile (HandleExpr expr cont) = do
-  ir <- compile expr
+  env <- get
+  void $ modify $ insertDef "resume"
   contIr <- compile cont
-  pure $ HandleIr ir contIr
-compile (DefExpr name expr) = do
+  f $ HandleIr ir contIr
+compileCont (DefExpr name expr) f = do
   void $ modify $ insertDef name
   ir <- compile expr
-  pure $ DefIr name ir
-compile (InfixExpr assoc name prec expr) = do
+  f $ DefIr name ir
+compileCont (InfixExpr assoc name prec expr) f = do
   void $ modify $ insertOp assoc name prec expr
-  compile expr
-compile (ClassExpr name args) = do
+  compileCont expr f
+compileCont (ClassExpr name args) f = do
   void $ modify $ insertDef name
-  pure $ ClassIr name args
-compile (ExternExpr name) = do
+  f $ ClassIr name args
+compileCont (ExternExpr name) f = do
   void $ modify $ insertDef name
-  pure $ IdentIr name
+  f $ IdentIr name
+
+compileConts :: forall m. Monad m => List Expr -> (List Ir -> CompilerT m Ir) -> CompilerT m Ir
+compileConts Nil f = f Nil
+compileConts (car : cdr) f = compileCont car \carC -> compileConts cdr \cdrC -> f (carC : cdrC)
 
 applyOps :: forall m. (MonadError String m) => List (Tuple Op Expr) -> List Op -> List Expr -> m Expr
 applyOps Nil Nil (expr : Nil) = pure expr

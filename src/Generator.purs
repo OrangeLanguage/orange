@@ -32,10 +32,19 @@ generateDoc (LambdaIr args ir) =
     txt ";") <>
   line <>
   txt "}"
-generateDoc (DoIr ir) =
+generateDoc (DoIr ir name cont) =
   txt "_handle(" <>
   generateDoc ir <>
-  txt ")"
+  txt ", function _(_handle, " <>
+  txt name <>
+  txt ") {" <>
+  nest 2 (
+    line <>
+    txt "return " <>
+    generateDoc cont <>
+    txt ";") <>
+  line <>
+  txt "})"
 generateDoc (HandleIr ir cont) =
   txt "function _(_handle) {" <>
   nest 2 (

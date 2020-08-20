@@ -90,9 +90,13 @@ irDoc (LambdaIr args ir) =
   intercalate (txt ", ") (map txt args) <> 
   txt " -> " <> 
   group (nest 2 $ line <> irDoc ir)
-irDoc (DoIr ir) = 
+irDoc (DoIr ir name cont) = 
   text "blue" "do " <> 
-  irDoc ir
+  txt (name <> " = ") <> 
+  irDoc ir <> 
+  text "blue" " in " <> 
+  line <> 
+  irDoc cont
 irDoc (HandleIr ir cont) = 
   text "blue" "handle " <> 
   irDoc ir <> 

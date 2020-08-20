@@ -113,7 +113,7 @@ parseApplies unit = do
 
 parseOp :: Parser String
 parseOp = do
-  name <- fromCharArray <$> Array.some (oneOf $ toCharArray "~`!@$%^&*-=+\\|:<>.?")
+  name <- fromCharArray <$> Array.some (oneOf $ toCharArray "~`!@$%^&*-=+\\|:<>.?/")
   ignored
   if name == "->"
     then fail "Reserved operator ->" 

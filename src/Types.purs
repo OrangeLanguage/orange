@@ -34,7 +34,7 @@ data Ir
   | ApplyIr Ir (List Ir)
   | BlockIr (List Ir)
   | LambdaIr (List String) Ir
-  | DoIr Ir
+  | DoIr Ir String Ir
   | HandleIr Ir Ir
   | DefIr String Ir
   | ClassIr String (List String)
