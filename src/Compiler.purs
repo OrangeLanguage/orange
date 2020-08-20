@@ -35,8 +35,8 @@ derive newtype instance bindCompilerT :: Monad m => Bind (CompilerT m)
 instance monadTransCompilerT :: MonadTrans CompilerT where
   lift ma = CompilerT $ StateT \s -> ExceptT $ ma <#> \a -> Right $ Tuple a s
 
-mapCompilerT :: forall m n a. Monad m => Monad n => (forall b. m b -> n b) -> CompilerT m a -> CompilerT n a
-mapCompilerT f (CompilerT c) = CompilerT $ mapStateT (mapExceptT f) c
+transformCompilerT :: forall m n a. Monad m => Monad n => (forall b. m b -> n b) -> CompilerT m a -> CompilerT n a
+transformCompilerT f (CompilerT c) = CompilerT $ mapStateT (mapExceptT f) c
 
 runCompilerT :: forall m a. Monad m => CompilerT m a -> Env -> m (Either String Env)
 runCompilerT compiler env = runExceptT $ execStateT (unwrap compiler) env

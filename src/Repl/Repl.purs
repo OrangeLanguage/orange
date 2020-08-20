@@ -2,7 +2,7 @@ module Repl where
 
 import Prelude
 
-import Compiler (Compiler, CompilerT, Env(..), mapCompilerT, runCompilerT)
+import Compiler (Compiler, CompilerT, Env(..), transformCompilerT, runCompilerT)
 import Compiler as Compiler
 import Control.Monad.Cont (ContT(..), runContT)
 import Control.Monad.Error.Class (class MonadError, class MonadThrow)
@@ -51,7 +51,7 @@ derive newtype instance monadErrorNodeRepl :: MonadError Js.Error NodeRepl
 derive newtype instance monadThrowNodeRepl :: MonadThrow Js.Error NodeRepl
 
 liftCompiler :: forall a. Compiler a -> NodeRepl a
-liftCompiler comp = NodeRepl $ lift $ lift $ mapCompilerT (unwrap >>> pure) comp
+liftCompiler comp = NodeRepl $ lift $ lift $ transformCompilerT (unwrap >>> pure) comp
 
 evalNodeRepl :: forall a. NodeRepl a -> Effect Unit
 evalNodeRepl (NodeRepl n) = do
