@@ -4,6 +4,7 @@
   },
   "dependencies": {
     "big-integer": "^1.6.48",
-    "chalk": "^4.1.0"
+    "chalk": "^4.1.0",
+    "diff": "^4.0.2"
   }
 }

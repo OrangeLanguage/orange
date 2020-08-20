@@ -9,7 +9,7 @@ import Data.Array (foldl)
 import Data.Array as Array
 import Data.BigInt (BigInt, fromString)
 import Data.Either (Either)
-import Data.List (many, snoc)
+import Data.List (many, snoc, List)
 import Data.List (null) as List
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String.CodeUnits (fromCharArray, singleton, toCharArray)
@@ -222,6 +222,13 @@ parseExtern = do
 
 parseExpr :: Unit -> Parser Expr
 parseExpr unit = parseBlock <|> parseDo <|> parseHandle <|> parseDef <|> parseInfix <|> parseClass <|> parseExtern <|> try parseLambda <|> parseOperators unit
+
+parseProgram :: Parser (List Expr)
+parseProgram = do
+  ignored
+  results <- many $ parseExpr unit
+  eof
+  pure results
 
 parseRepl :: Parser (Maybe Expr)
 parseRepl = do
