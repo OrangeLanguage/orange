@@ -5,23 +5,26 @@ import Prelude
 import Compiler (Compiler, CompilerT, Env(..), transformCompilerT, runCompilerT)
 import Compiler as Compiler
 import Control.Monad.Cont (ContT(..), runContT)
-import Control.Monad.Error.Class (class MonadError, class MonadThrow)
+import Control.Monad.Error.Class (class MonadError, class MonadThrow, catchError, throwError, try)
 import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, ask, lift, runReaderT)
 import Data.Bifunctor (lmap)
 import Data.Char.Unicode (isSpace)
-import Data.Either (Either, either)
+import Data.Either (Either(..), either)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.String (drop, length)
 import Data.String.CodeUnits (takeWhile, uncons)
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
-import Effect.Class (class MonadEffect)
+import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Class.Console (log, logShow)
 import Effect.Exception (Error) as Js
-import Effect.Exception (message, throw)
+import Effect.Exception (catchException, error, message, throw)
 import Generator as Generator
+import Node.Encoding (Encoding(..))
+import Node.FS.Sync (readTextFile)
+import Node.Path (FilePath)
 import Node.ReadLine (Interface, createConsoleInterface, noCompletion, question)
 import Parse (incremental, parseRepl)
 import Prettier.Printer (colorize)
@@ -50,6 +53,11 @@ derive newtype instance monadReaderNodeRepl :: MonadReader Interface NodeRepl
 derive newtype instance monadErrorNodeRepl :: MonadError Js.Error NodeRepl
 derive newtype instance monadThrowNodeRepl :: MonadThrow Js.Error NodeRepl
 
+tryCompiler :: forall a. Compiler a -> NodeRepl a
+tryCompiler ca = do
+  result <- liftCompiler $ catchError (ca <#> pure) (\e -> pure $ throwError $ error e)
+  result
+
 liftCompiler :: forall a. Compiler a -> NodeRepl a
 liftCompiler comp = NodeRepl $ lift $ lift $ transformCompilerT (unwrap >>> pure) comp
 
@@ -74,22 +82,25 @@ more :: NodeRepl String
 more = query "       > " <#> append "\n"
 
 input :: NodeRepl String
-input = query (colorize "orange" "orange" <> " > ")
+input = query $ colorize "orange" "orange" <> " > "
 
 parse :: String -> NodeRepl (Maybe Expr)
 parse line = do
   let parser = incremental more $ (hoistParserT (unwrap >>> pure) parseRepl :: ParserT String NodeRepl (Maybe Expr))
   result <- runParserT line parser
   handle Nothing $ lmap Parse result
+    where 
+      handle :: forall a. a -> Either (ReplError Js.Error) a -> NodeRepl a
+      handle default result = either (\err -> handleError err *> pure default) pure result
 
 compile :: Expr -> NodeRepl Unit
 compile tree = do
-  ir <- liftCompiler $ Compiler.compile tree
+  ir <- tryCompiler $ Compiler.compile tree
   log $ showIr 40 ir
 
 generate :: Expr -> NodeRepl Unit
 generate expr = do
-  ir <- liftCompiler $ Compiler.compile expr
+  ir <- tryCompiler $ Compiler.compile expr
   log $ Generator.generate 0 ir
 
 process :: String -> NodeRepl Unit
@@ -106,6 +117,8 @@ process line = case uncons line of
       "generate" -> do
         tree <- parse expr
         maybe (pure unit) generate tree
+      "load" -> do
+        loadFile expr
       "eval" -> do
         log "eval not implemented"
       _ -> handleError $ Generic $ "Unknown command " <> command
@@ -113,13 +126,10 @@ process line = case uncons line of
     tree <- parse line
     maybe (pure unit) compile tree
 
-handle :: forall a. a -> Either (ReplError Js.Error) a -> NodeRepl a
-handle default result = either (\err -> handleError err *> pure default) pure result
-
 repl ::  NodeRepl Unit
 repl = do
   userInput <- input
-  process userInput
+  catchError (process userInput) logShow
   repl
 
 break :: String -> Tuple String String
@@ -127,3 +137,10 @@ break s =
   let prefix = takeWhile (not isSpace) s
       postfix = drop (length prefix) s
   in  Tuple prefix postfix
+
+loadFile :: FilePath -> NodeRepl Unit
+loadFile path = do
+  readResult <- liftEffect $ try $ readTextFile UTF8 path
+  chars <- either throwError pure readResult
+  expr <- parse chars
+  maybe (pure unit) (void <<< tryCompiler <<< Compiler.compile) expr
