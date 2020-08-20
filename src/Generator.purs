@@ -33,7 +33,8 @@ generateDoc (ApplyIr ir args) =
   txt ")"
 generateDoc (BlockIr irs) =
   txt "function _() {" <>
-  fold (map (\ir -> generateDoc ir <> txt ";" <> line) irs) <>
+  nest 2 (fold (map (\ir -> line <> generateDoc ir <> txt ";") irs)) <>
+  line <>
   txt "}()"
 generateDoc (LambdaIr args ir) = 
   txt "function _(" <> 
@@ -79,16 +80,14 @@ generateDoc (DefIr name ir) =
   txt "const " <>
   txt name <>
   txt " = " <>
-  generateDoc ir <>
-  txt ";"
+  generateDoc ir
 generateDoc (ExtendIr clazz name ir) =
   txt "_" <>
   txt clazz <>
   txt ".prototype." <>
   txt name <>
   txt " = " <>
-  generateDoc ir <>
-  txt ";"
+  generateDoc ir
 generateDoc (ClassIr name args) =
   txt "function _" <>
   txt name <>
@@ -107,7 +106,7 @@ generateDoc (ClassIr name args) =
   txt name <>
   txt "(" <>
   intercalate (txt ", ") (map txt args) <>
-  txt "); };"
+  txt "); }"
 
 generate :: Int -> Ir -> String
 generate width ir = pretty width $ group $ generateDoc ir
@@ -118,7 +117,7 @@ generatorTest name path = Golden.basic name path \input -> do
   exprs <- either (\e -> throw $ show e) pure parseResult
   let compileResult = evalCompiler (Compiler.compile $ BlockExpr exprs) (Env 0 mempty mempty)
   ir <- either (\e -> throw e) pure compileResult
-  pure $ generate 120 ir
+  pure $ generate 80 ir
 
 basicGeneratorTest :: Golden.Test
 basicGeneratorTest = generatorTest "basic generation" "test/golden/basic-generation.oj"
