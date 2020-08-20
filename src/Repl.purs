@@ -103,7 +103,7 @@ compile expr = do
 generate :: String -> NodeRepl Unit
 generate expr = do
   ir <- tryCompile expr
-  maybe (pure unit) (log <<< Generator.generate 0) ir
+  maybe (pure unit) (log <<< Generator.generate 40) ir
 
 process :: String -> NodeRepl Unit
 process line = case uncons line of
