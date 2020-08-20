@@ -4,7 +4,6 @@ import Prelude
 
 import Data.BigInt (BigInt)
 import Data.List (List)
-import Data.Maybe (Maybe)
 import Data.Tuple (Tuple)
 
 data Assoc = LeftAssoc | RightAssoc
@@ -12,36 +11,32 @@ data Assoc = LeftAssoc | RightAssoc
 data Op = Op Assoc BigInt Expr
 
 data Expr
-  = IdentExpr String
-  | IntExpr BigInt
+  = IntExpr BigInt
   | CharExpr Char
   | StringExpr String
+  | IdentExpr String
   | ApplyExpr Expr (List Expr)
   | OpExpr Expr (List (Tuple String Expr))
   | BlockExpr (List Expr)
   | LambdaExpr (List String) Expr
   | DoExpr Expr
   | HandleExpr Expr Expr
-  | DefExpr String (Maybe Type) Expr
-  | TypeExpr String Type
+  | DefExpr String Expr
   | InfixExpr Assoc String BigInt Expr
-  | ExternExpr String Type
-
-data Type
-  = IdentType String
-  | ApplyType Type (List Type)
-  | FuncType Type (List Type)
+  | ClassExpr String (List String)
+  | ExternExpr String
 
 data Ir
-  = IdentIr String
-  | IntIr BigInt
+  = IntIr BigInt
   | CharIr Char
   | StringIr String
+  | IdentIr String
   | ApplyIr Ir (List Ir)
   | BlockIr (List Ir)
   | LambdaIr (List String) Ir
   | DoIr Ir
   | HandleIr Ir Ir
   | DefIr String Ir
+  | ClassIr String (List String)
 
 derive instance eqAssoc :: Eq Assoc

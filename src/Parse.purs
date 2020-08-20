@@ -19,7 +19,7 @@ import Text.Parsing.Parser (Parser) as P
 import Text.Parsing.Parser.Combinators (option, sepBy, skipMany, try)
 import Text.Parsing.Parser.String (class StringLike, char, eof, noneOf, oneOf, string, null)
 import Text.Parsing.Parser.Token (digit, letter, space)
-import Types (Assoc(..), Expr(..), Type(..))
+import Types (Assoc(..), Expr(..))
 
 type Parser a = P.Parser String a
 data ParsingError = ParsingError String ParseError
@@ -45,13 +45,6 @@ escape = do
   void $ string "\\\""
   pure '"'
 
-parseIdent :: Parser String
-parseIdent = do
-  head <- letter
-  tail <- fromCharArray <$> Array.many (letter <|> digit)
-  ignored
-  pure $ singleton head <> tail
-
 parseInt :: Parser BigInt
 parseInt = do
   sign <- option "" $ string "-"
@@ -76,6 +69,13 @@ parseString = do
   ignored
   pure chars
 
+parseIdent :: Parser String
+parseIdent = do
+  head <- letter
+  tail <- fromCharArray <$> Array.many (letter <|> digit)
+  ignored
+  pure $ singleton head <> tail
+
 parseParens :: forall a. (Unit -> Parser a) -> Parser a
 parseParens parser = do
   void $ char '('
@@ -85,59 +85,12 @@ parseParens parser = do
   ignored
   pure a
 
-parseAtomicType :: Unit -> Parser Type
-parseAtomicType unit =
-  IdentType <$> parseIdent <|>
-  parseParens parseType
-
-parseApplyType :: Unit -> Parser Type
-parseApplyType unit = do
-  typ <- parseAtomicType unit
-  option typ $ do
-    void $ char '<'
-    ignored
-    types <- sepBy (parseType unit) (char ',' *> ignored)
-    void $ char '>'
-    ignored
-    pure $ if List.null types
-      then typ
-      else ApplyType typ types
-
-parseFuncTail :: Type -> Parser Type
-parseFuncTail typ = option typ $ do 
-  void $ char '('
-  ignored
-  args <- sepBy (parseType unit) (char ',' *> ignored)
-  void $ char ')'
-  ignored
-  parseFuncTail $ FuncType typ args
-
-parseFuncType :: Unit -> Parser Type
-parseFuncType unit = do
-  typ <- parseApplyType unit
-  parseFuncTail typ
-
-parseType :: Unit -> Parser Type
-parseType unit = parseFuncType unit
-
-parseTypedName :: Parser (Tuple String Type)
-parseTypedName = do
-  typ <- parseFuncType unit
-  name <- parseIdent
-  t <- parseFuncTail typ
-  pure $ Tuple name t
-
-parseMaybeTypedName :: Parser (Tuple String (Maybe Type))
-parseMaybeTypedName =
-  try (parseTypedName <#> \(Tuple name typ) -> Tuple name $ Just typ) <|>
-  (parseIdent <#> \name -> Tuple name Nothing)
-
 parseAtomicExpr :: Unit -> Parser Expr
 parseAtomicExpr unit = 
-  IdentExpr <$> parseIdent <|> 
   IntExpr <$> parseInt <|> 
   CharExpr <$> parseChar <|> 
   StringExpr <$> parseString <|> 
+  IdentExpr <$> parseIdent <|> 
   parseParens parseExpr
 
 parseApplyExpr :: Parser (List Expr)
@@ -218,21 +171,11 @@ parseDef :: Parser Expr
 parseDef = do
   void $ string "def"
   ignored
-  (Tuple name typ) <- parseMaybeTypedName
-  void $ char '='
-  ignored
-  expr <- parseExpr unit
-  pure $ DefExpr name typ expr
-
-parseTypedef :: Parser Expr
-parseTypedef = do
-  void $ string "type"
-  ignored
   name <- parseIdent
   void $ char '='
   ignored
-  typ <- parseType unit
-  pure $ TypeExpr name typ
+  expr <- parseExpr unit
+  pure $ DefExpr name expr
 
 parseAssoc :: Parser Assoc
 parseAssoc = string "left" *> pure LeftAssoc <|> string "right" *> pure RightAssoc
@@ -250,15 +193,27 @@ parseInfix = do
   expr <- parseExpr unit
   pure $ InfixExpr assoc op int expr
 
+parseClass :: Parser Expr
+parseClass = do
+  void $ string "class"
+  ignored
+  name <- parseIdent
+  void $ char '('
+  ignored
+  args <- sepBy parseIdent (char ',' *> ignored)
+  void $ char ')'
+  ignored
+  pure $ ClassExpr name args
+
 parseExtern :: Parser Expr
 parseExtern = do
   void $ string "extern"
   ignored
-  (Tuple name typ) <- parseTypedName
-  pure $ ExternExpr name typ
+  name <- parseIdent
+  pure $ ExternExpr name
 
 parseExpr :: Unit -> Parser Expr
-parseExpr unit = parseBlock <|> parseDo <|> parseHandle <|> parseDef <|> parseTypedef <|> parseInfix <|> parseExtern <|> try parseLambda <|> parseOperators unit
+parseExpr unit = parseBlock <|> parseDo <|> parseHandle <|> parseDef <|> parseInfix <|> parseClass <|> parseExtern <|> try parseLambda <|> parseOperators unit
 
 parseRepl :: Parser (Maybe Expr)
 parseRepl = do

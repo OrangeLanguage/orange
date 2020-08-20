@@ -2,7 +2,8 @@ module Repl where
 
 import Prelude
 
-import Compiler (Compiler, CompilerT, Env(..), mapCompilerT, runCompilerT, synth)
+import Compiler (Compiler, CompilerT, Env(..), mapCompilerT, runCompilerT)
+import Compiler as Compiler
 import Control.Monad.Cont (ContT(..), runContT)
 import Control.Monad.Error.Class (class MonadError, class MonadThrow)
 import Control.Monad.Except (ExceptT, runExceptT)
@@ -14,7 +15,7 @@ import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.String (drop, length)
 import Data.String.CodeUnits (takeWhile, uncons)
-import Data.Tuple (Tuple(..), fst)
+import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Effect.Class (class MonadEffect)
 import Effect.Class.Console (log, logShow)
@@ -55,7 +56,7 @@ liftCompiler comp = NodeRepl $ lift $ lift $ mapCompilerT (unwrap >>> pure) comp
 evalNodeRepl :: forall a. NodeRepl a -> Effect Unit
 evalNodeRepl (NodeRepl n) = do
   interface <- createConsoleInterface noCompletion
-  void $ runContT (runCompilerT (runExceptT $ runReaderT n interface) (Env 0 mempty mempty mempty)) $ either throw (const $ pure unit)
+  void $ runContT (runCompilerT (runExceptT $ runReaderT n interface) (Env 0 mempty mempty)) $ either throw (const $ pure unit)
 
 handleError :: ReplError Js.Error -> NodeRepl Unit
 handleError (Native err) = log $ message err
@@ -83,12 +84,12 @@ parse line = do
 
 compile :: Expr -> NodeRepl Unit
 compile tree = do
-  ir <- liftCompiler $ synth tree <#> fst
+  ir <- liftCompiler $ Compiler.compile tree
   log $ showIr 40 ir
 
 generate :: Expr -> NodeRepl Unit
 generate expr = do
-  ir <- liftCompiler $ synth expr <#> fst
+  ir <- liftCompiler $ Compiler.compile expr
   log $ Generator.generate 0 ir
 
 process :: String -> NodeRepl Unit
