@@ -22,19 +22,9 @@ data Expr
   | LambdaExpr (List String) Expr
   | DoExpr Expr
   | HandleExpr Expr Expr
-  | DefExpr String (Maybe Type) Expr
-  | TypeExpr String Type
+  | DefExpr String Expr
   | InfixExpr Assoc String BigInt Expr
-  | ExternExpr String Type
-
-data Type
-  = IntType
-  | CharType
-  | StringType
-  | UnitType
-  | IdentType String
-  | ApplyType Type (List Type)
-  | FuncType Type (List Type)
+  | ExternExpr String
 
 data Ir
   = IntIr BigInt

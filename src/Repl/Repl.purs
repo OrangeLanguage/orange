@@ -2,7 +2,8 @@ module Repl where
 
 import Prelude
 
-import Compiler (Env(..), runCompiler, synth)
+import Compiler as Compiler
+import Compiler (Env(..), runCompiler)
 import Control.Monad.Cont (ContT(..), runContT)
 import Control.Monad.Error.Class (class MonadError, class MonadThrow, throwError)
 import Control.Monad.Except (ExceptT, runExceptT)
@@ -27,7 +28,7 @@ import Effect.Exception (error, message)
 import Node.ReadLine (Interface, createConsoleInterface, noCompletion, question)
 import Parse (incremental, parseRepl)
 import Prettier.Printer (colorize)
-import Pretty (showExpr, showIr, showType)
+import Pretty (showExpr, showIr)
 import Text.Parsing.Parser (ParseError, ParserT, hoistParserT, runParserT)
 import Types (Expr(..))
 
@@ -76,9 +77,8 @@ compile :: Expr -> NodeRepl Unit
 compile tree = do
   modify_ (\exprs -> exprs <> singleton tree)
   block <- gets BlockExpr
-  (Tuple ir typ) <- liftEffect $ either (error >>> throwError) pure $ runCompiler (synth block) $ Env 0 empty empty empty
+  ir <- liftEffect $ either (error >>> throwError) pure $ runCompiler (Compiler.compile block) $ Env 0 empty empty
   log $ showIr 40 ir
-  log $ showType 40 typ
 
 print :: Expr -> NodeRepl Unit
 print tree = log $ showExpr 40 tree

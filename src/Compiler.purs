@@ -9,15 +9,15 @@ import Data.BigInt (BigInt)
 import Data.Either (Either)
 import Data.Foldable (foldr)
 import Data.Identity (Identity)
-import Data.List (List(..), last, zip, (:))
+import Data.List (List(..), (:))
 import Data.Map (Map, insert, lookup)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..), fst, uncurry)
+import Data.Tuple (Tuple(..))
 import Effect.Class (class MonadEffect)
-import Pretty (showExpr, showType)
-import Types (Assoc(..), Expr(..), Ir(..), Op(..), Type(..))
+import Pretty (showExpr)
+import Types (Assoc(..), Expr(..), Ir(..), Op(..))
 
 newtype CompilerT m a = CompilerT (StateT Env (ExceptT String m) a)
 type Compiler a = CompilerT Identity a
@@ -39,119 +39,72 @@ runCompilerT compiler env = runExceptT $ evalStateT (unwrap compiler) env
 runCompiler :: forall a. Compiler a -> Env -> Either String a
 runCompiler compiler env = unwrap $ runCompilerT compiler env
 
-data Env = Env Int (Map String Type) (Map String Type) (Map String Op)
+data Env = Env Int (Map String Unit) (Map String Op)
 
-insertDef :: String -> Type -> Env -> Env
-insertDef name typ (Env i defs types ops) = Env i (insert name typ defs) types ops
-
-insertType :: String -> Type -> Env -> Env
-insertType name typ (Env i defs types ops) = Env i defs (insert name typ types) ops
+insertDef :: String -> Env -> Env
+insertDef name (Env i defs ops) = Env i (insert name unit defs) ops
 
 insertOp :: Assoc -> String -> BigInt -> Expr -> Env -> Env
-insertOp assoc name prec expr (Env i defs types ops) = Env i defs types (insert name (Op assoc prec expr) ops)
+insertOp assoc name prec expr (Env i defs ops) = Env i defs (insert name (Op assoc prec expr) ops)
 
-lookupDef :: String -> Env -> Maybe Type
-lookupDef name (Env i defs types ops) = lookup name defs
-
-lookupType :: String -> Env -> Maybe Type
-lookupType name (Env i defs types ops) = lookup name types
+lookupDef :: String -> Env -> Maybe Unit
+lookupDef name (Env i defs ops) = lookup name defs
 
 lookupOp :: String -> Env -> Maybe Op
-lookupOp name (Env i defs types ops) = lookup name ops
+lookupOp name (Env i defs ops) = lookup name ops
 
 fresh :: forall m. Monad m => CompilerT m String
 fresh = do
-  (Env i defs types ops) <- get
-  put $ Env (i + 1) defs types ops
+  (Env i defs ops) <- get
+  put $ Env (i + 1) defs ops
   pure $ show i
 
-check :: forall m. Monad m => Expr -> Type -> CompilerT m Ir
-check (LambdaExpr args expr) typ = case typ of
-  (FuncType retTyp argsTyp) -> do
-    env <- get
-    put $ foldr (uncurry insertDef) env $ zip args argsTyp
-    exprIr <- check expr retTyp
-    put env
-    pure $ LambdaIr args exprIr
-  x -> throwError $ "Expected function, found " <> showType 40 x
-check expr typ = do
-  (Tuple ir typ') <- synth expr
-  checkIs typ typ'
-  pure ir
-
-checkIs :: forall m. Monad m => Type -> Type -> CompilerT m Unit
-checkIs IntType IntType = pure unit
-checkIs CharType CharType = pure unit
-checkIs StringType StringType = pure unit
-checkIs UnitType UnitType = pure unit
-checkIs t1 (IdentType n2) = do
-  env <- get
-  case lookupType n2 env of 
-    Nothing -> throwError $ "Undefined " <> n2
-    Just t2 -> checkIs t1 t2
-checkIs (IdentType n1) t2 = do
-  env <- get
-  case lookupType n1 env of 
-    Nothing -> throwError $ "Undefined " <> n1
-    Just t1 -> checkIs t1 t2
-checkIs (FuncType r1 args1) (FuncType r2 args2) = do
-  checkIs r1 r2
-  checkIsList args1 args2
-checkIs t1 t2 = throwError $ showType 40 t1 <> " does not equal " <> showType 40 t2
-
-checkIsList :: forall m. Monad m => List Type -> List Type -> CompilerT m Unit
-checkIsList Nil Nil = pure unit
-checkIsList (car : cdr) (car' : cdr') = do
-  checkIs car car'
-  checkIsList cdr cdr'
-checkIsList l1 l2 = throwError "Mismatched lists"
-
-synth :: forall m. Monad m => Expr -> CompilerT m (Tuple Ir Type)
-synth (IntExpr int) = pure $ Tuple (IntIr int) IntType
-synth (CharExpr char) = pure $ Tuple (CharIr char) CharType
-synth (StringExpr string) = pure $ Tuple (StringIr string) StringType
-synth (IdentExpr name) = do
+compile :: forall m. Monad m => Expr -> CompilerT m Ir
+compile (IntExpr int) = pure $ IntIr int
+compile (CharExpr char) = pure $ CharIr char
+compile (StringExpr string) = pure $ StringIr string
+compile (IdentExpr name) = do
   env <- get
   case lookupDef name env of
     Nothing -> throwError $ "Undefined " <> name
-    Just typ -> pure $ Tuple (IdentIr name) typ
-synth (ApplyExpr fun args) = do
-  (Tuple funIr funTyp) <- synth fun
-  case funTyp of 
-    (FuncType retTyp argsTyp) -> do
-      argsIrs <- traverse (\(Tuple expr typ) -> check expr typ) $ zip args argsTyp
-      pure $ Tuple (ApplyIr funIr argsIrs) retTyp
-    x -> throwError $ "Expected function, found " <> showType 40 x
-synth (OpExpr expr operators) = do
+    Just unit -> pure $ IdentIr name
+compile (ApplyExpr fun args) = do
+  funIr <- compile fun
+  argsIrs <- traverse compile args
+  pure $ ApplyIr funIr argsIrs
+compile (OpExpr expr operators) = do
   env <- get
   ops <- traverse (\(Tuple name e) -> case lookupOp name env of
     Nothing -> throwError $ "Undefined " <> name
     Just op -> pure $ Tuple op e) operators
   apply <- applyOps ops Nil (expr : Nil)
-  synth apply
-synth (BlockExpr exprs) = do
-  synths <- traverse synth exprs
-  case last synths of
-    Nothing -> pure $ Tuple (BlockIr Nil) UnitType
-    Just (Tuple _ typ) -> pure $ Tuple (BlockIr (map fst synths)) typ
-synth (DefExpr name (Just typ) expr) = do
-  void $ modify $ insertDef name typ
-  ir <- check expr typ
-  pure $ Tuple (DefIr name ir) typ
-synth (DefExpr name Nothing expr) = do
-  (Tuple ir irTyp) <- synth expr
-  void $ modify $ insertDef name irTyp
-  pure $ Tuple (DefIr name ir) irTyp
-synth (TypeExpr name typ) = do
-  void $ modify $ insertType name typ
-  pure $ Tuple (BlockIr Nil) UnitType
-synth (InfixExpr assoc name prec expr) = do
+  compile apply
+compile (BlockExpr exprs) = do
+  compiles <- traverse compile exprs
+  pure $ BlockIr compiles
+compile (LambdaExpr args expr) = do
+  env <- get
+  put $ foldr insertDef env args
+  exprIr <- compile expr
+  put env
+  pure $ LambdaIr args exprIr
+compile (DoExpr expr) = do
+  ir <- compile expr
+  pure $ DoIr ir
+compile (HandleExpr expr cont) = do
+  ir <- compile expr
+  contIr <- compile cont
+  pure $ HandleIr ir contIr
+compile (DefExpr name expr) = do
+  void $ modify $ insertDef name
+  ir <- compile expr
+  pure $ DefIr name ir
+compile (InfixExpr assoc name prec expr) = do
   void $ modify $ insertOp assoc name prec expr
-  synth expr
-synth (ExternExpr name typ) = do
-  void $ modify $ insertDef name typ
-  pure $ Tuple (IdentIr name) typ
-synth expr = throwError $ "Could not synthesize type for " <> showExpr 40 expr
+  compile expr
+compile (ExternExpr name) = do
+  void $ modify $ insertDef name
+  pure $ IdentIr name
 
 applyOps :: forall m. (MonadError String m) => List (Tuple Op Expr) -> List Op -> List Expr -> m Expr
 applyOps Nil Nil (expr : Nil) = pure expr
