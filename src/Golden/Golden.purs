@@ -40,7 +40,7 @@ defaultResultHandler diffs = do
 
 fileTest :: String -> FilePath -> (String -> Effect String) -> (Diff -> Effect Unit) -> Test
 fileTest name file test diffHandler = mkTest do
-  log $ name <> " <-" <> (colorize "yellow" $ "'" <> file <> "'")
+  log $ name <> " <- " <> (colorize "yellow" $ "'" <> file <> "'")
   fileContents <- readTextFile UTF8 file
   testOutput <- test fileContents
   let goldenFile = goldenTestPath file
