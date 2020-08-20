@@ -68,7 +68,7 @@ fresh :: forall m. Monad m => CompilerT m String
 fresh = do
   (Env i defs ops) <- get
   put $ Env (i + 1) defs ops
-  pure $ show i
+  pure $ "_" <> show i
 
 compile :: forall m. Monad m => Expr -> CompilerT m Ir
 compile expr = compileCont expr pure 
@@ -107,10 +107,17 @@ compileCont (HandleExpr expr cont) f = do
   void $ modify $ insertDef "resume"
   contIr <- compile cont
   f $ HandleIr ir contIr
-compileCont (DefExpr name expr) f = do
+compileCont (DefExpr Nothing name expr) f = do
   void $ modify $ insertDef name
   ir <- compile expr
   f $ DefIr name ir
+compileCont (DefExpr (Just clazz) name expr) f = do
+  env <- get
+  case lookupDef clazz env of
+    Nothing -> throwError $ "Undefined " <> clazz
+    Just unit -> do 
+      ir <- compile expr
+      f $ ExtendIr clazz name ir
 compileCont (InfixExpr assoc name prec expr) f = do
   void $ modify $ insertOp assoc name prec expr
   compileCont expr f

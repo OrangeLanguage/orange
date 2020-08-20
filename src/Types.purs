@@ -4,6 +4,7 @@ import Prelude
 
 import Data.BigInt (BigInt)
 import Data.List (List)
+import Data.Maybe (Maybe)
 import Data.Tuple (Tuple)
 
 data Assoc = LeftAssoc | RightAssoc
@@ -21,7 +22,7 @@ data Expr
   | LambdaExpr (List String) Expr
   | DoExpr Expr
   | HandleExpr Expr Expr
-  | DefExpr String Expr
+  | DefExpr (Maybe String) String Expr
   | InfixExpr Assoc String BigInt Expr
   | ClassExpr String (List String)
   | ExternExpr String
@@ -37,6 +38,7 @@ data Ir
   | DoIr Ir String Ir
   | HandleIr Ir Ir
   | DefIr String Ir
+  | ExtendIr String String Ir
   | ClassIr String (List String)
 
 derive instance eqAssoc :: Eq Assoc

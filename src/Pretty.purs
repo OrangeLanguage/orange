@@ -5,8 +5,9 @@ import Prelude
 import Data.BigInt (BigInt, toString)
 import Data.Foldable (intercalate)
 import Data.List (fold)
+import Data.Maybe (maybe)
 import Data.Tuple (Tuple(..))
-import Prettier.Printer (DOC, group, line, nest, pretty, text, txt)
+import Prettier.Printer (DOC, group, line, nest, nil, pretty, text, txt)
 import Types (Assoc(..), Expr(..), Ir(..))
 
 assocDoc :: Assoc -> DOC  
@@ -47,8 +48,9 @@ exprDoc (HandleExpr expr cont) =
   text "blue" " with " <> 
   line <> 
   exprDoc cont
-exprDoc (DefExpr name expr) = 
+exprDoc (DefExpr clazz name expr) = 
   text "blue" "def " <> 
+  maybe nil txt clazz <>
   txt name <>
   txt " = " <> 
   nest 2 (line <> exprDoc expr)
@@ -105,6 +107,13 @@ irDoc (HandleIr ir cont) =
   irDoc cont
 irDoc (DefIr name ir) = 
   text "blue" "def " <> 
+  txt name <>
+  txt " = " <> 
+  irDoc ir
+irDoc (ExtendIr clazz name ir) = 
+  text "blue" "extend " <> 
+  txt clazz <>
+  txt " " <>
   txt name <>
   txt " = " <> 
   irDoc ir

@@ -171,11 +171,12 @@ parseDef :: Parser Expr
 parseDef = do
   void $ string "def"
   ignored
+  clazz <- option Nothing $ Just <$> try (parseIdent <* char '.')
   name <- parseIdent
   void $ char '='
   ignored
   expr <- parseExpr unit
-  pure $ DefExpr name expr
+  pure $ DefExpr clazz name expr
 
 parseAssoc :: Parser Assoc
 parseAssoc = string "left" *> pure LeftAssoc <|> string "right" *> pure RightAssoc

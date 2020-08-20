@@ -67,21 +67,33 @@ generateDoc (DefIr name ir) =
   txt " = " <>
   generateDoc ir <>
   txt ";"
-generateDoc (ClassIr name args) =
-  txt "const " <> 
+generateDoc (ExtendIr clazz name ir) =
+  txt "_" <>
+  txt clazz <>
+  txt ".prototype." <>
   txt name <>
-  txt " = function _(" <>
-  intercalate (txt ", ") (txt "_handle" : map txt args) <> 
+  txt " = " <>
+  generateDoc ir <>
+  txt ";"
+generateDoc (ClassIr name args) =
+  txt "function _" <>
+  txt name <>
+  txt "(" <>
+  intercalate (txt ", ") (map txt args) <> 
   txt ") {" <>
-  nest 2 (
-    line <>
-    txt "return {type: " <>
-    txt name <>
-    txt ", " <>
-    intercalate (txt ", ") (map txt args) <>
-    txt "};") <>
+  nest 2 (fold (map (\n -> line <> txt "this." <> txt n <> txt " = " <> txt n <> txt ";") args)) <>
   line <>
-  txt "}"
+  txt "};" <>
+  line <>
+  txt "function " <>
+  txt name <>
+  txt "(" <>
+  intercalate (txt ", ") (txt "_handle" : map txt args) <> 
+  txt ") { return new _" <> 
+  txt name <>
+  txt "(" <>
+  intercalate (txt ", ") (map txt args) <>
+  txt "); };"
 
 generate :: Int -> Ir -> String
 generate width ir = pretty width $ group $ generateDoc ir
