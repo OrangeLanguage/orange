@@ -54,7 +54,7 @@ fileTest name file test diffHandler = mkTest do
     expectedOutput <- readTextFile UTF8 goldenFile
     diffHandler $ diffImpl expectedOutput testOutput
   else do
-    log $ "+ " <> (colorize "yellow" $ "'" <> goldenFile <> "'")
+    log $ (colorize "green" "+ ") <> (colorize "yellow" $ "'" <> goldenFile <> "'")
     writeTextFile UTF8 goldenFile testOutput
 
 basic :: String -> FilePath -> (String -> Effect String) -> Test

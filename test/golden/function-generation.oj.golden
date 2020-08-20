@@ -1,5 +1,1 @@
-function _() {const Add = function _(_handle, x, y) {
-  return function _() {(x.add)(_handle, y);
-  }();
-};;
-}()
+function _() {const Add = function _(_handle, x, y) {return function _() {(x.add)(_handle, y);}();};;}()

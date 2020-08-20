@@ -118,7 +118,7 @@ generatorTest name path = Golden.basic name path \input -> do
   exprs <- either (\e -> throw $ show e) pure parseResult
   let compileResult = evalCompiler (Compiler.compile $ BlockExpr exprs) (Env 0 mempty mempty)
   ir <- either (\e -> throw e) pure compileResult
-  pure $ generate 0 ir
+  pure $ generate 120 ir
 
 basicGeneratorTest :: Golden.Test
 basicGeneratorTest = generatorTest "basic generation" "test/golden/basic-generation.oj"
