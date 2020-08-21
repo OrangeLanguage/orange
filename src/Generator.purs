@@ -2,22 +2,14 @@ module Generator where
 
 import Prelude
 
-import Compiler (Env(..), evalCompiler)
-import Compiler as Compiler
 import Control.Monad.Writer (Writer, runWriter, tell)
 import Data.BigInt (toString)
-import Data.Either (either)
 import Data.List (fold, intercalate, last, (:))
 import Data.Maybe (maybe)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
-import Effect.Exception (throw)
-import Node.Path (FilePath)
-import Orange.Golden as Golden
-import Parse (parseProgram)
 import Prettier.Printer (DOC, group, line, nest, pretty, txt)
-import Text.Parsing.Parser (runParser)
-import Types (Expr(..), Ir(..))
+import Types (Ir(..))
 
 generateDoc :: Ir -> Writer DOC DOC
 generateDoc (IntIr int) = pure $ txt $ toString int
@@ -150,11 +142,3 @@ generate :: Int -> Ir -> String
 generate width ir = 
   let (Tuple doc docs) = runWriter $ generateDoc ir
   in pretty width $ group docs <> group doc
-
-generatorTest :: String -> FilePath -> Golden.Test
-generatorTest name path = Golden.basic name path \input -> do
-  let parseResult = runParser input parseProgram
-  exprs <- either (\e -> throw $ show e) pure parseResult
-  let compileResult = evalCompiler (Compiler.compile $ BlockExpr exprs) (Env 0 mempty mempty)
-  ir <- either (\e -> throw e) pure compileResult
-  pure $ generate 80 ir

@@ -1,4 +1,4 @@
-module Orange.Golden where
+module Test.Golden where
 
 import Prelude
 
