@@ -183,7 +183,7 @@ parseDef = do
   ignored
   clazz <- option Nothing $ Just <$> try (parseIdent <* char '.')
   name <- parseIdent
-  args <- option Nil do
+  maybeArgs <- option Nothing $ Just <$> do
     void $ char '('
     ignored
     args <- parseArgs
@@ -193,9 +193,9 @@ parseDef = do
   void $ char '='
   ignored
   expr <- parseExpr unit
-  pure $ if List.null args
-    then DefExpr clazz name expr
-    else DefExpr clazz name $ LambdaExpr args expr
+  pure $ case maybeArgs of
+    Nothing -> DefExpr clazz name expr
+    Just args -> DefExpr clazz name $ LambdaExpr args expr
 
 parseAssoc :: Parser Assoc
 parseAssoc = string "left" *> pure LeftAssoc <|> string "right" *> pure RightAssoc
