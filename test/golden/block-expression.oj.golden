@@ -1,0 +1,1 @@
+function _() {const one = function _() {const a = 1;return a;}();return one;}()

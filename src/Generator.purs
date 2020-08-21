@@ -4,9 +4,13 @@ import Prelude
 
 import Compiler (Env(..), evalCompiler)
 import Compiler as Compiler
+import Control.Monad.Writer (Writer, runWriter, tell)
 import Data.BigInt (toString)
 import Data.Either (either)
-import Data.List (fold, intercalate, (:))
+import Data.List (fold, intercalate, last, (:))
+import Data.Maybe (maybe)
+import Data.Traversable (traverse)
+import Data.Tuple (Tuple(..))
 import Effect.Exception (throw)
 import Node.Path (FilePath)
 import Orange.Golden as Golden
@@ -15,101 +19,137 @@ import Prettier.Printer (DOC, group, line, nest, pretty, txt)
 import Text.Parsing.Parser (runParser)
 import Types (Expr(..), Ir(..))
 
-generateDoc :: Ir -> DOC
-generateDoc (IntIr int) = txt $ toString int
-generateDoc (CharIr char) = txt $ show char
-generateDoc (StringIr string) = txt $ show string
-generateDoc (IdentIr name) = txt name
-generateDoc (DotIr ir name) =
-  txt "(" <>
-  generateDoc ir <>
-  txt "." <>
-  txt name <>
-  txt ")"
-generateDoc (ApplyIr ir args) =
-  generateDoc ir <> 
-  txt "(" <> 
-  intercalate (txt ", ") (txt "_handle" : map generateDoc args) <> 
-  txt ")"
-generateDoc (BlockIr irs) =
-  txt "function _() {" <>
-  nest 2 (fold (map (\ir -> line <> generateDoc ir <> txt ";") irs)) <>
-  line <>
-  txt "}()"
-generateDoc (LambdaIr args ir) = 
-  txt "function _(" <> 
-  intercalate (txt ", ") (txt "_handle" : map txt args) <> 
-  txt ") {" <>
-  nest 2 (
+generateDoc :: Ir -> Writer DOC DOC
+generateDoc (IntIr int) = pure $ txt $ toString int
+generateDoc (CharIr char) = pure $ txt $ show char
+generateDoc (StringIr string) = pure $ txt $ show string
+generateDoc (IdentIr name) = pure $ txt name
+generateDoc (DotIr ir name) = do
+  irDoc <- generateDoc ir
+  pure $ 
+    txt "(" <> 
+    irDoc <>
+    txt "." <>
+    txt name <>
+    txt ")"
+generateDoc (ApplyIr ir args) = do
+  irDoc <- generateDoc ir
+  argsDoc <- traverse generateDoc args
+  pure $ 
+    irDoc <> 
+    txt "(" <> 
+    intercalate (txt ", ") (txt "_handle" : argsDoc) <> 
+    txt ")"
+generateDoc (BlockIr irs) = 
+  let (Tuple irDocs docs) = runWriter $ traverse generateDoc irs
+  in pure $ 
+    txt "function _() {" <>
+    nest 2 (
+      line <> 
+      docs <>
+      txt "return " <>
+      maybe (txt "unit") (\x -> x) (last irDocs) <>
+      txt ";") <>
     line <>
-    txt "return " <> 
-    generateDoc ir <>
-    txt ";") <>
-  line <>
-  txt "}"
-generateDoc (DoIr ir name cont) =
-  txt "_handle(" <>
-  generateDoc ir <>
-  txt ", function _(_handle, " <>
-  txt name <>
-  txt ") {" <>
-  nest 2 (
+    txt "}()"
+generateDoc (LambdaIr args ir) = do
+  irDoc <- generateDoc ir
+  pure $ 
+    txt "function _(" <> 
+    intercalate (txt ", ") (txt "_handle" : map txt args) <> 
+    txt ") {" <>
+    nest 2 (
+      line <>
+      txt "return " <> 
+      irDoc <>
+      txt ";") <>
     line <>
-    txt "return " <>
-    generateDoc cont <>
-    txt ";") <>
-  line <>
-  txt "})"
-generateDoc (HandleIr ir cont) =
-  txt "function _(_handle) {" <>
-  nest 2 (
+    txt "}"
+generateDoc (DoIr ir name cont) = do
+  irDoc <- generateDoc ir
+  contDoc <- generateDoc cont
+  pure $ 
+    txt "_handle(" <>
+    irDoc <>
+    txt ", function _(_handle, " <>
+    txt name <>
+    txt ") {" <>
+    nest 2 (
+      line <>
+      txt "return " <>
+      contDoc <>
+      txt ";") <>
     line <>
-    txt "return " <>
-    generateDoc ir <>
-    txt ";") <>
-  line <>
-  txt "}(function _(resume, _do) {" <>
-  nest 2 (
+    txt "})"
+generateDoc (HandleIr ir cont) = do
+  irDoc <- generateDoc ir
+  contDoc <- generateDoc cont
+  pure $ 
+    txt "function _(_handle) {" <>
+    nest 2 (
+      line <>
+      txt "return " <>
+      irDoc <>
+      txt ";") <>
     line <>
-    txt "return " <>
-    generateDoc cont <>
-    txt "(_handle, _do);") <>
-  line <>
-  txt "})"
-generateDoc (DefIr name ir) =
-  txt "const " <>
-  txt name <>
-  txt " = " <>
-  generateDoc ir
-generateDoc (ExtendIr clazz name ir) =
-  txt "_" <>
-  txt clazz <>
-  txt ".prototype." <>
-  txt name <>
-  txt " = " <>
-  generateDoc ir
-generateDoc (ClassIr name args) =
-  txt "function _" <>
-  txt name <>
-  txt "(" <>
-  intercalate (txt ", ") (map txt args) <> 
-  txt ") {" <>
-  nest 2 (fold (map (\n -> line <> txt "this." <> txt n <> txt " = " <> txt n <> txt ";") args)) <>
-  line <>
-  txt "};" <>
-  line <>
-  txt "function " <>
-  txt name <>
-  txt "(" <>
-  intercalate (txt ", ") (txt "_handle" : map txt args) <> 
-  txt ") { return new _" <> 
-  txt name <>
-  txt "(" <>
-  intercalate (txt ", ") (map txt args) <>
-  txt "); }"
+    txt "}(function _(resume, _do) {" <>
+    nest 2 (
+      line <>
+      txt "return " <>
+      contDoc <>
+      txt "(_handle, _do);") <>
+    line <>
+    txt "})"
+generateDoc (DefIr name ir) = do
+  irDoc <- generateDoc ir
+  tell $
+    txt "const " <>
+    txt name <>
+    txt " = " <>
+    irDoc <>
+    txt ";" <> 
+    line
+  pure $ txt name
+generateDoc (ExtendIr clazz name ir) = do
+  irDoc <- generateDoc ir
+  tell $
+    txt "_" <>
+    txt clazz <>
+    txt ".prototype." <>
+    txt name <>
+    txt " = " <>
+    irDoc <>
+    txt ";" <>
+    line
+  pure $ txt name
+generateDoc (ClassIr name args) = do
+  tell $
+    txt "function _" <>
+    txt name <>
+    txt "(" <>
+    intercalate (txt ", ") (map txt args) <> 
+    txt ") {" <>
+    nest 2 (fold (map (\n -> line <> txt "this." <> txt n <> txt " = " <> txt n <> txt ";") args)) <>
+    line <>
+    txt "};" <>
+    line
+  tell $
+    txt "function " <>
+    txt name <>
+    txt "(" <>
+    intercalate (txt ", ") (txt "_handle" : map txt args) <> 
+    txt ") { return new _" <> 
+    txt name <>
+    txt "(" <>
+    intercalate (txt ", ") (map txt args) <>
+    txt "); };" <>
+    line
+  pure $ txt name
 
 generate :: Int -> Ir -> String
-generate width ir = pretty width $ group $ generateDoc ir
+generate width ir = 
+  let (Tuple doc docs) = runWriter $ generateDoc ir
+  in pretty width $ group docs <> group doc
 
 generatorTest :: String -> FilePath -> Golden.Test
 generatorTest name path = Golden.basic name path \input -> do
@@ -118,9 +158,3 @@ generatorTest name path = Golden.basic name path \input -> do
   let compileResult = evalCompiler (Compiler.compile $ BlockExpr exprs) (Env 0 mempty mempty)
   ir <- either (\e -> throw e) pure compileResult
   pure $ generate 80 ir
-
-basicGeneratorTest :: Golden.Test
-basicGeneratorTest = generatorTest "basic generation" "test/golden/basic-generation.oj"
-
-functionGeneratorTest :: Golden.Test
-functionGeneratorTest = generatorTest "function generation" "test/golden/function-generation.oj"

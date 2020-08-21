@@ -1,0 +1,1 @@
+def point = class Point(x, y)

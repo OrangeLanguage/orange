@@ -1,0 +1,9 @@
+function _() {
+  function _Point(x, y) {
+    this.x = x;
+    this.y = y;
+  };
+  function Point(_handle, x, y) { return new _Point(x, y); };
+  const point = Point;
+  return point;
+}()
