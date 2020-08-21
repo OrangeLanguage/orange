@@ -14,5 +14,6 @@ main = do
     generatorTest "basic generation" "test/golden/basic-generation.oj",
     generatorTest "function generation" "test/golden/function-generation.oj",
     generatorTest "class expression" "test/golden/class-expression.oj",
-    generatorTest "block expression" "test/golden/block-expression.oj"
+    generatorTest "block expression" "test/golden/block-expression.oj",
+    generatorTest "function syntax" "test/golden/function-syntax.oj"
   ]

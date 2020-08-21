@@ -98,10 +98,10 @@ irDoc (BlockIr irs) =
   group (nest 2 (intercalate (txt ";") $ map (irDoc >>> ((<>) line)) irs) <> line) <>
   txt "}"
 irDoc (LambdaIr args ir) = 
-  txt "(" <>
   txt "\\" <> 
   intercalate (txt ", ") (map txt args) <> 
   txt " -> " <> 
+  txt "(" <>
   group (nest 2 $ line <> irDoc ir) <>
   txt ")"
 irDoc (DoIr ir name cont) = 

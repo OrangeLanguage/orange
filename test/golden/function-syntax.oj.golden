@@ -1,0 +1,1 @@
+function _() {const id = function _(_handle, x) {return x;};return id;}()

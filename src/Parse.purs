@@ -9,7 +9,7 @@ import Data.Array (foldl)
 import Data.Array as Array
 import Data.BigInt (BigInt, fromString)
 import Data.Either (Either)
-import Data.List (many, snoc, List)
+import Data.List (List(..), many, snoc)
 import Data.List (null) as List
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String.CodeUnits (fromCharArray, singleton, toCharArray)
@@ -149,11 +149,14 @@ parseBlock = do
   ignored
   pure $ BlockExpr exprs
 
+parseArgs :: Parser (List String)
+parseArgs = do
+  ignored
+  sepBy parseIdent (char ',' <* ignored)
+
 parseLambda :: Parser Expr
 parseLambda = do
-  ignored
-  args <- sepBy parseIdent (char ',' <* ignored)
-  ignored
+  args <- parseArgs
   void $ string "->"
   ignored
   expr <- parseExpr unit
@@ -180,10 +183,19 @@ parseDef = do
   ignored
   clazz <- option Nothing $ Just <$> try (parseIdent <* char '.')
   name <- parseIdent
+  args <- option Nil do
+    void $ char '('
+    ignored
+    args <- parseArgs
+    void $ char ')'
+    ignored
+    pure args
   void $ char '='
   ignored
   expr <- parseExpr unit
-  pure $ DefExpr clazz name expr
+  pure $ if List.null args
+    then DefExpr clazz name expr
+    else DefExpr clazz name $ LambdaExpr args expr
 
 parseAssoc :: Parser Assoc
 parseAssoc = string "left" *> pure LeftAssoc <|> string "right" *> pure RightAssoc
