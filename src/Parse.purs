@@ -19,7 +19,7 @@ import Text.Parsing.Parser (Parser) as P
 import Text.Parsing.Parser.Combinators (option, sepBy, skipMany, try)
 import Text.Parsing.Parser.String (class StringLike, char, eof, noneOf, oneOf, string, null)
 import Text.Parsing.Parser.Token (digit, letter, space)
-import Types (Assoc(..), Expr(..))
+import Types (Assoc(..), Eval(..), Expr(..))
 
 type Parser a = P.Parser String a
 data ParsingError = ParsingError String ParseError
@@ -149,10 +149,19 @@ parseBlock = do
   ignored
   pure $ BlockExpr exprs
 
-parseArgs :: Parser (List String)
+parseEval :: Parser Eval
+parseEval = option EagerEval (string "lazy" *> pure LazyEval) <* ignored
+
+parseArg :: Parser (Tuple Eval String)
+parseArg = do
+  eval <- parseEval
+  name <- parseIdent
+  pure $ Tuple eval name
+
+parseArgs :: Parser (List (Tuple Eval String))
 parseArgs = do
   ignored
-  sepBy parseIdent (char ',' <* ignored)
+  sepBy parseArg (char ',' <* ignored)
 
 parseLambda :: Parser Expr
 parseLambda = do

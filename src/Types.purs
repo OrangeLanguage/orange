@@ -8,6 +8,7 @@ import Data.Maybe (Maybe)
 import Data.Tuple (Tuple)
 
 data Assoc = LeftAssoc | RightAssoc
+data Eval = EagerEval | LazyEval
 
 data Op = Op Assoc BigInt Expr
 
@@ -20,7 +21,7 @@ data Expr
   | ApplyExpr Expr (List Expr)
   | OpExpr Expr (List (Tuple String Expr))
   | BlockExpr (List Expr)
-  | LambdaExpr (List String) Expr
+  | LambdaExpr (List (Tuple Eval String)) Expr
   | DoExpr Expr
   | HandleExpr Expr Expr
   | DefExpr (Maybe String) String Expr
@@ -36,7 +37,7 @@ data Ir
   | DotIr Ir String
   | ApplyIr Ir (List Ir)
   | BlockIr (List Ir)
-  | LambdaIr (List String) Ir
+  | LambdaIr (List (Tuple Eval String)) Ir
   | DoIr Ir String Ir
   | HandleIr Ir Ir
   | DefIr String Ir

@@ -14,7 +14,7 @@ import Data.Map (Map, insert, lookup)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), snd)
 import Effect.Class (class MonadEffect)
 import Types (Assoc(..), Expr(..), Ir(..), Op(..))
 
@@ -94,7 +94,7 @@ compileCont (OpExpr expr operators) f = do
 compileCont (BlockExpr exprs) f = compileConts exprs \irs -> f $ BlockIr irs
 compileCont (LambdaExpr args expr) f = do
   env <- get
-  put $ foldr insertDef env args
+  put $ foldr insertDef env $ map snd args
   exprIr <- compile expr
   put env
   f $ LambdaIr args exprIr
@@ -113,6 +113,7 @@ compileCont (DefExpr Nothing name expr) f = do
   ir <- compile expr
   f $ DefIr name ir
 compileCont (DefExpr (Just clazz) name expr) f = do
+  void $ modify $ insertDef "this"
   env <- get
   case lookupDef clazz env of
     Nothing -> throwError $ "Undefined " <> clazz

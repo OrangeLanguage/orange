@@ -6,16 +6,23 @@ import Data.BigInt (BigInt, toString)
 import Data.Foldable (intercalate)
 import Data.List (fold)
 import Data.Maybe (maybe)
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), uncurry)
 import Prettier.Printer (DOC, group, line, nest, nil, pretty, text, txt)
-import Types (Assoc(..), Expr(..), Ir(..))
+import Types (Assoc(..), Eval(..), Expr(..), Ir(..))
 
 assocDoc :: Assoc -> DOC  
 assocDoc LeftAssoc = text "blue" "left "
 assocDoc RightAssoc = text "blue" "right "
 
+evalDoc :: Eval -> DOC
+evalDoc EagerEval = nil
+evalDoc LazyEval = text "blue" "lazy "
+
 intDoc :: BigInt -> DOC
 intDoc int = text "cyan" $ toString int
+
+argDoc :: Eval -> String -> DOC
+argDoc eval name = evalDoc eval <> txt name
 
 exprDoc :: Expr -> DOC
 exprDoc (IntExpr int) = intDoc int
@@ -40,7 +47,7 @@ exprDoc (BlockExpr exprs) =
   txt "}"
 exprDoc (LambdaExpr args expr) = 
   txt "\\" <> 
-  group (nest 2 $ intercalate (txt ", ") (map (txt >>> ((<>) line)) args)) <> 
+  group (nest 2 $ intercalate (txt ", ") (map (uncurry argDoc) args)) <> 
   txt " -> " <> 
   group (nest 2 $ line <> exprDoc expr)
 exprDoc (DoExpr expr) = 
@@ -99,7 +106,7 @@ irDoc (BlockIr irs) =
   txt "}"
 irDoc (LambdaIr args ir) = 
   txt "\\" <> 
-  intercalate (txt ", ") (map txt args) <> 
+  intercalate (txt ", ") (map (uncurry argDoc) args) <> 
   txt " -> " <> 
   txt "(" <>
   group (nest 2 $ line <> irDoc ir) <>

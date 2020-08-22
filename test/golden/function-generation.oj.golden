@@ -1,7 +1,9 @@
 function _() {
   const Add = function _(_handle, x, y) {
+    x = x();
+    y = y();
     return function _() {
-      return (x.add)(_handle, y);
+      return (x.add)(_handle, () => y);
     }();
   };
   return Add;

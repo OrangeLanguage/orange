@@ -4,12 +4,16 @@ import Prelude
 
 import Control.Monad.Writer (Writer, runWriter, tell)
 import Data.BigInt (toString)
-import Data.List (fold, intercalate, last, (:))
+import Data.List (fold, init, intercalate, last, (:))
 import Data.Maybe (maybe)
 import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..))
-import Prettier.Printer (DOC, group, line, nest, pretty, txt)
-import Types (Ir(..))
+import Data.Tuple (Tuple(..), snd, uncurry)
+import Prettier.Printer (DOC, group, line, nest, nil, pretty, txt)
+import Types (Eval(..), Ir(..))
+
+evalDoc :: Eval -> String -> DOC
+evalDoc EagerEval name = txt name <> txt " = " <> txt name <> txt "();" <> line
+evalDoc LazyEval name = nil
 
 generateDoc :: Ir -> Writer DOC DOC
 generateDoc (IntIr int) = pure $ txt $ toString int
@@ -26,7 +30,7 @@ generateDoc (DotIr ir name) = do
     txt ")"
 generateDoc (ApplyIr ir args) = do
   irDoc <- generateDoc ir
-  argsDoc <- traverse generateDoc args
+  argsDoc <- traverse (\arg -> generateDoc arg <#> (<>) (txt "() => ")) args
   pure $ 
     irDoc <> 
     txt "(" <> 
@@ -39,6 +43,7 @@ generateDoc (BlockIr irs) =
     nest 2 (
       line <> 
       docs <>
+      maybe nil (fold <<< map (\x -> x <> txt ";" <> line)) (init irDocs) <>
       txt "return " <>
       maybe (txt "unit") (\x -> x) (last irDocs) <>
       txt ";") <>
@@ -48,10 +53,11 @@ generateDoc (LambdaIr args ir) = do
   irDoc <- generateDoc ir
   pure $ 
     txt "function _(" <> 
-    intercalate (txt ", ") (txt "_handle" : map txt args) <> 
+    intercalate (txt ", ") (txt "_handle" : map (snd >>> txt) args) <> 
     txt ") {" <>
     nest 2 (
       line <>
+      fold (map (uncurry evalDoc) args) <>
       txt "return " <> 
       irDoc <>
       txt ";") <>
