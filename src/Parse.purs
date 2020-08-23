@@ -104,21 +104,11 @@ parseBlock = do
   ignored
   pure $ BlockExpr exprs
 
-parseParens :: forall a. (Unit -> Parser a) -> Parser a
-parseParens parser = do
-  void $ char '('
-  ignored
-  a <- parser unit
-  void $ char ')'
-  ignored
-  pure a
-
 parseAtomic :: Unit -> Parser Expr
 parseAtomic unit = 
   parseClass <|> 
   parseExtern <|>
   parseBlock <|> 
-  try (parseParens parseExpr) <|>
   IntExpr <$> parseInt <|> 
   CharExpr <$> parseChar <|> 
   StringExpr <$> parseString <|> 
