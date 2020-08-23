@@ -88,6 +88,13 @@ parseClass = do
   ignored
   pure $ ClassExpr name args
 
+parseMixin :: Parser Expr
+parseMixin = do
+  void $ string "mixin"
+  ignored
+  name <- parseIdent
+  pure $ MixinExpr name
+
 parseExtern :: Parser Expr
 parseExtern = do
   void $ string "extern"
@@ -108,6 +115,7 @@ parseAtomic :: Unit -> Parser Expr
 parseAtomic unit = 
   parseClass <|> 
   parseExtern <|>
+  parseMixin <|>
   parseBlock <|> 
   IntExpr <$> parseInt <|> 
   CharExpr <$> parseChar <|> 

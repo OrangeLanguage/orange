@@ -143,6 +143,15 @@ generateDoc (ClassIr name args) = do
     txt "); };" <>
     line
   pure $ txt name
+generateDoc (MixinIr name) = pure $ 
+  txt "function _(_handle, object, mixin) {" <>
+  nest 2 (
+    line <>
+    txt "return Object.assign(object(), { " <>
+    txt name <>
+    txt ": mixin() })") <>
+  line <>
+  txt "}" 
 
 generate :: Int -> Ir -> String
 generate width ir = 

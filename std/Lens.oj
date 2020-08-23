@@ -1,0 +1,5 @@
+def lens mixin set
+
+def set(lens, x) lens.set(x)
+
+infix right 1 = set

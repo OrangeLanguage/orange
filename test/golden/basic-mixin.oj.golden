@@ -1,0 +1,5 @@
+function _() {
+  return function _(_handle, object, mixin) {
+    return Object.assign(object(), { x: mixin() })
+  };
+}()

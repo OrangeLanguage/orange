@@ -20,7 +20,8 @@ main = Golden.runSuite [
   generatorTest "class expression" "test/golden/class-expression.oj",
   generatorTest "block expression" "test/golden/block-expression.oj",
   generatorTest "zero argument function syntax" "test/golden/zero-argument-function-syntax.oj",
-  generatorTest "lazy identity" "test/golden/lazy-identity.oj"
+  generatorTest "lazy identity" "test/golden/lazy-identity.oj",
+  generatorTest "basic mixin" "test/golden/basic-mixin.oj"
 ]
 
 generatorTest :: String -> FilePath -> Golden.Test
