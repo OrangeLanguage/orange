@@ -1,1 +1,1 @@
-def Add = x, y -> { x.add(y) }
+def Add(x, y) { x.add(y) }

@@ -76,6 +76,34 @@ parseIdent = do
   ignored
   pure $ singleton head <> tail
 
+parseClass :: Parser Expr
+parseClass = do
+  void $ string "class"
+  ignored
+  name <- parseIdent
+  void $ char '('
+  ignored
+  args <- sepBy parseIdent (char ',' *> ignored)
+  void $ char ')'
+  ignored
+  pure $ ClassExpr name args
+
+parseExtern :: Parser Expr
+parseExtern = do
+  void $ string "extern"
+  ignored
+  name <- parseIdent
+  pure $ ExternExpr name
+
+parseBlock :: Parser Expr
+parseBlock = do
+  void $ char '{'
+  ignored
+  exprs <- many $ parseExpr unit
+  void $ char '}'
+  ignored
+  pure $ BlockExpr exprs
+
 parseParens :: forall a. (Unit -> Parser a) -> Parser a
 parseParens parser = do
   void $ char '('
@@ -87,11 +115,14 @@ parseParens parser = do
 
 parseAtomic :: Unit -> Parser Expr
 parseAtomic unit = 
+  parseClass <|> 
+  parseExtern <|>
+  parseBlock <|> 
+  try (parseParens parseExpr) <|>
   IntExpr <$> parseInt <|> 
   CharExpr <$> parseChar <|> 
   StringExpr <$> parseString <|> 
-  IdentExpr <$> parseIdent <|> 
-  parseParens parseExpr
+  IdentExpr <$> parseIdent 
 
 parseDot :: Parser (Expr -> Expr)
 parseDot = do
@@ -140,15 +171,6 @@ parseOperators unit = do
     then expr
     else OpExpr expr operators
 
-parseBlock :: Parser Expr
-parseBlock = do
-  void $ char '{'
-  ignored
-  exprs <- many $ parseExpr unit
-  void $ char '}'
-  ignored
-  pure $ BlockExpr exprs
-
 parseEval :: Parser Eval
 parseEval = option EagerEval (string "lazy" *> pure LazyEval) <* ignored
 
@@ -158,15 +180,12 @@ parseArg = do
   name <- parseIdent
   pure $ Tuple eval name
 
-parseArgs :: Parser (List (Tuple Eval String))
-parseArgs = do
-  ignored
-  sepBy parseArg (char ',' <* ignored)
-
 parseLambda :: Parser Expr
 parseLambda = do
-  args <- parseArgs
-  void $ string "->"
+  void $ char '('
+  ignored
+  args <- sepBy parseArg (char ',' <* ignored)
+  void $ char ')'
   ignored
   expr <- parseExpr unit
   pure $ LambdaExpr args expr
@@ -192,19 +211,8 @@ parseDef = do
   ignored
   clazz <- option Nothing $ Just <$> try (parseIdent <* char '.')
   name <- parseIdent
-  maybeArgs <- option Nothing $ Just <$> do
-    void $ char '('
-    ignored
-    args <- parseArgs
-    void $ char ')'
-    ignored
-    pure args
-  void $ char '='
-  ignored
   expr <- parseExpr unit
-  pure $ case maybeArgs of
-    Nothing -> DefExpr clazz name expr
-    Just args -> DefExpr clazz name $ LambdaExpr args expr
+  pure $ DefExpr clazz name expr
 
 parseAssoc :: Parser Assoc
 parseAssoc = string "left" *> pure LeftAssoc <|> string "right" *> pure RightAssoc
@@ -215,34 +223,13 @@ parseInfix = do
   ignored
   assoc <- parseAssoc
   ignored
-  op <- parseOp
   int <- parseInt
-  void $ string "="
-  ignored
+  op <- parseOp
   expr <- parseExpr unit
   pure $ InfixExpr assoc op int expr
 
-parseClass :: Parser Expr
-parseClass = do
-  void $ string "class"
-  ignored
-  name <- parseIdent
-  void $ char '('
-  ignored
-  args <- sepBy parseIdent (char ',' *> ignored)
-  void $ char ')'
-  ignored
-  pure $ ClassExpr name args
-
-parseExtern :: Parser Expr
-parseExtern = do
-  void $ string "extern"
-  ignored
-  name <- parseIdent
-  pure $ ExternExpr name
-
 parseExpr :: Unit -> Parser Expr
-parseExpr unit = parseBlock <|> parseDo <|> parseHandle <|> parseDef <|> parseInfix <|> parseClass <|> parseExtern <|> try parseLambda <|> parseOperators unit
+parseExpr unit = parseDo <|> parseHandle <|> parseDef <|> parseInfix <|> parseOperators unit <|> parseLambda
 
 parseProgram :: Parser (List Expr)
 parseProgram = do

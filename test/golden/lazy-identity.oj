@@ -1,1 +1,1 @@
-lazy x -> x
+(lazy x) x

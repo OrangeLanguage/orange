@@ -1,4 +1,4 @@
-def one = {
-    def a = 1
+def one {
+    def a 1
     a
 }

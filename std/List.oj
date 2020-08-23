@@ -1,7 +1,8 @@
-def nil = (class Nil())()
-def cons = class Cons(car, cdr)
+def nil class Nil()()
+def cons class Cons(car, cdr)
 
-infix right : 5 = cons
+infix right 5 : cons
 
-def Nil.fold(acc, f) = acc
-def Cons.fold(acc, f) = this.cdr.fold(f(this.car, acc), f)
+def Nil.fold(acc, f) acc
+def Cons.fold(acc, f) 
+    this.cdr.fold(f(this.car, acc), f)

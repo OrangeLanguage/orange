@@ -1,7 +1,0 @@
-function _() {
-  const id = function _(_handle, x) {
-    x = x();
-    return x;
-  };
-  return id;
-}()

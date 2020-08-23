@@ -1,9 +1,13 @@
-def if = class If(cond, t)
+def if class If(cond, t)
 
-def If.elif(lazy cond, lazy t) = this.cond.if(this.t, If(cond, t))
-def If.else(lazy f) = this.cond.if(this.t, f)
+def If.elif(lazy cond, lazy t) 
+    this.cond.if(this.t, If(cond, t))
 
-def while(lazy cond, lazy then) = {
-    def go() = cond().if(-> { then() go() }, -> {})
+def If.else(lazy f) 
+    this.cond.if(this.t, f)
+
+def while(lazy cond, lazy then) {
+    def go() 
+        cond().if(() { then() go() }, () {})
     go()
 }

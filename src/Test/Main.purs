@@ -19,7 +19,6 @@ main = Golden.runSuite [
   generatorTest "function generation" "test/golden/function-generation.oj",
   generatorTest "class expression" "test/golden/class-expression.oj",
   generatorTest "block expression" "test/golden/block-expression.oj",
-  generatorTest "function syntax" "test/golden/function-syntax.oj",
   generatorTest "zero argument function syntax" "test/golden/zero-argument-function-syntax.oj",
   generatorTest "lazy identity" "test/golden/lazy-identity.oj"
 ]

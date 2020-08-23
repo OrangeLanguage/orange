@@ -1,13 +1,13 @@
-def lt(x, y) = x.lt(y)
-def gt(x, y) = x.gt(y)
-def eq(x, y) = x.eq(y)
-def leq(x, y) = x.leq(y)
-def geq(x, y) = x.geq(y)
-def neq(x, y) = x.neq(y)
+def lt(x, y) x.lt(y)
+def gt(x, y) x.gt(y)
+def eq(x, y) x.eq(y)
+def leq(x, y) x.leq(y)
+def geq(x, y) x.geq(y)
+def neq(x, y) x.neq(y)
 
-infix left < 4 = lt
-infix left > 4 = gt
-infix left == 4 = eq
-infix left <= 4 = leq
-infix left >= 4 = geq
-infix left != 4 = neq
+infix left 4 < lt
+infix left 4 > gt
+infix left 4 == eq
+infix left 4 <= leq
+infix left 4 >= geq
+infix left 4 != neq
