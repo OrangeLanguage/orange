@@ -9,7 +9,7 @@ import Data.Array (foldl)
 import Data.Array as Array
 import Data.BigInt (BigInt, fromString)
 import Data.Either (Either)
-import Data.List (List, many, snoc)
+import Data.List (List(..), many, snoc, (:))
 import Data.List (null) as List
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String.CodeUnits (fromCharArray, singleton, toCharArray)
@@ -141,11 +141,16 @@ parseApply = do
     Nothing -> \e -> ApplyExpr e args
     Just expr -> \e -> ApplyExpr e $ snoc args expr
 
+parseBlockTrail :: Unit -> Parser (Expr -> Expr)
+parseBlockTrail unit = do 
+  expr <- parseBlock 
+  pure $ \e -> ApplyExpr e $ expr : Nil
+
 parseTrail :: Unit -> Parser Expr
 parseTrail unit = do
   expr <- parseAtomic unit
-  trails <- many (parseApply <|> parseDot)
-  pure $ foldl (\f g -> g f) expr trails
+  trails <- many (parseApply <|> parseDot <|> parseBlockTrail unit)
+  pure $ foldl (#) expr trails
 
 parseOp :: Parser String
 parseOp = do
