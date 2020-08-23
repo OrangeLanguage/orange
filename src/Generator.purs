@@ -15,6 +15,19 @@ evalDoc :: Eval -> String -> DOC
 evalDoc EagerEval name = txt name <> txt " = " <> txt name <> txt "();" <> line
 evalDoc LazyEval name = nil
 
+classArgDoc :: String -> DOC
+classArgDoc name = 
+  line <>
+  txt "this." <> 
+  txt name <>
+  txt " = { ..." <>
+  txt name <>
+  txt ", set: function _(_handle, " <>
+  txt name <>
+  txt ") { return { ...this, " <>
+  txt name <> 
+  txt " }; } };"
+
 generateDoc :: Ir -> Writer DOC DOC
 generateDoc (IntIr int) = pure $ txt $ toString int
 generateDoc (CharIr char) = pure $ txt $ show char
@@ -127,7 +140,7 @@ generateDoc (ClassIr name args) = do
     txt "(" <>
     intercalate (txt ", ") (map txt args) <> 
     txt ") {" <>
-    nest 2 (fold (map (\n -> line <> txt "this." <> txt n <> txt " = " <> txt n <> txt ";") args)) <>
+    nest 2 (fold (map classArgDoc args)) <>
     line <>
     txt "};" <>
     line
@@ -144,12 +157,12 @@ generateDoc (ClassIr name args) = do
     line
   pure $ txt name
 generateDoc (MixinIr name) = pure $ 
-  txt "function _(_handle, object, mixin) {" <>
+  txt "function _(_handle, _object, _mixin) {" <>
   nest 2 (
     line <>
-    txt "return Object.assign(object(), { " <>
+    txt "return { ..._object, " <>
     txt name <>
-    txt ": mixin() })") <>
+    txt ": _mixin };") <>
   line <>
   txt "}" 
 
