@@ -91,6 +91,7 @@ compileCont (OpExpr expr operators) f = do
     Just op -> pure $ Tuple op e) operators
   apply <- applyOps ops Nil (expr : Nil)
   compileCont apply f
+compileCont (BlockExpr (expr : Nil)) f = compileCont expr f
 compileCont (BlockExpr exprs) f = compileConts exprs \irs -> f $ BlockIr irs
 compileCont (LambdaExpr args expr) f = do
   env <- get

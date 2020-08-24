@@ -24,9 +24,9 @@ classArgDoc name =
   txt name <>
   txt ", set: (_handle, " <>
   txt name <>
-  txt ") => { return { ...this, " <>
+  txt ") => ({ ...this, " <>
   txt name <> 
-  txt " }; } };"
+  txt "}) };"
 
 generateDoc :: Ir -> Writer DOC DOC
 generateDoc (IntIr int) = pure $ txt $ "(" <> toString int <> ")"
@@ -58,7 +58,7 @@ generateDoc (BlockIr irs) =
       docs <>
       maybe nil (fold <<< map (\x -> x <> txt ";" <> line)) (init irDocs) <>
       txt "return " <>
-      maybe (txt "unit") (\x -> x) (last irDocs) <>
+      maybe (txt "_unit") (\x -> x) (last irDocs) <>
       txt ";") <>
     line <>
     txt "})()"
@@ -80,12 +80,17 @@ generateDoc (DoIr ir name cont) = do
   irDoc <- generateDoc ir
   contDoc <- generateDoc cont
   pure $ 
-    txt "_handle(" <>
+    txt "_handle(() => " <>
     irDoc <>
     txt ", (_handle, " <>
     txt name <>
     txt ") => {" <>
     nest 2 (
+      line <>
+      txt name <>
+      txt " = " <>
+      txt name <>
+      txt "();" <>
       line <>
       txt "return " <>
       contDoc <>
@@ -96,21 +101,12 @@ generateDoc (HandleIr ir cont) = do
   irDoc <- generateDoc ir
   contDoc <- generateDoc cont
   pure $ 
-    txt "((_handle) => {" <>
-    nest 2 (
-      line <>
-      txt "return " <>
-      irDoc <>
-      txt ";") <>
-    line <>
-    txt "})((resume, _do) => {" <>
-    nest 2 (
-      line <>
-      txt "return " <>
-      contDoc <>
-      txt "(_handle, _do);") <>
-    line <>
-    txt "})"
+    txt "((_handle) => " <>
+    irDoc <>
+    txt ")((_do, resume) => " <>
+    contDoc <>
+    txt "(_handle, _do)" <>
+    txt ")"
 generateDoc (DefIr name ir) = do
   irDoc <- generateDoc ir
   tell $
@@ -143,7 +139,7 @@ generateDoc (ClassIr name args) = do
     nest 2 (
       fold (map classArgDoc args) <>
       line <>
-      txt "this.dot = (_f) => { return { ..._f(this), dot: (_g) => this.dot((_o) => _g(_f(_o))) } };") <>
+      txt "this.dot = (_f) => ({ ..._f(this), dot: (_g) => this.dot((_o) => _g(_f(_o))) });") <>
     line <>
     txt "};" <>
     line
@@ -162,9 +158,9 @@ generateDoc (ClassIr name args) = do
 generateDoc (WithIr name) = pure $ 
   txt "((_handle, _object, _with) => " <>
   nest 2 (
-    txt "{ ..._object, " <>
+    txt "({ ..._object, " <>
     txt name <>
-    txt ": _with }") <>
+    txt ": _with })") <>
   txt ")"
 
 generate :: Int -> Ir -> String
