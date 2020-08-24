@@ -1,4 +1,8 @@
-def lens mixin set
+def lens(x, set) {
+    def dot(lens, f) 
+        with dot(f(lens), (g) dot(lens, (x) g(f(x))))
+    with set(with dot(x, (f) dot(x, f)), set)
+}
 
 def set(lens, x) lens.set(x)
 

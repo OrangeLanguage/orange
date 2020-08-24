@@ -126,7 +126,7 @@ compileCont (InfixExpr assoc name prec expr) f = do
 compileCont (ClassExpr name args) f = do
   void $ modify $ insertDef name
   f $ ClassIr name args
-compileCont (MixinExpr name) f = f $ MixinIr name
+compileCont (WithExpr name) f = f $ WithIr name
 compileCont (ExternExpr name) f = do
   void $ modify $ insertDef name
   f $ IdentIr name
