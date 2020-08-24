@@ -143,7 +143,7 @@ generateDoc (ClassIr name args) = do
     nest 2 (
       fold (map classArgDoc args) <>
       line <>
-      txt "this._dot = (_f) => { ..._f(this), _dot: (_g) => this._dot((_o) => _f(_g(_o))) };") <>
+      txt "this.dot = (_f) => { ..._f(this), dot: (_g) => this.dot((_o) => _g(_f(_o))) };") <>
     line <>
     txt "};" <>
     line
@@ -159,12 +159,12 @@ generateDoc (ClassIr name args) = do
     txt "); };" <>
     line
   pure $ txt name
-generateDoc (MixinIr name) = pure $ 
-  txt "((_handle, _object, _mixin) => " <>
+generateDoc (WithIr name) = pure $ 
+  txt "((_handle, _object, _with) => " <>
   nest 2 (
     txt "{ ..._object, " <>
     txt name <>
-    txt ": _mixin }") <>
+    txt ": _with }") <>
   txt ")"
 
 generate :: Int -> Ir -> String

@@ -77,8 +77,8 @@ exprDoc (ClassExpr name args) =
   txt "(" <>
   intercalate (txt ", ") (map txt args) <> 
   txt ")"
-exprDoc (MixinExpr name) =
-  text "blue" "mixin " <>
+exprDoc (WithExpr name) =
+  text "blue" "with " <>
   txt name
 exprDoc (ExternExpr name) = 
   text "blue" "extern " <> 
@@ -153,8 +153,8 @@ irDoc (ClassIr name args) =
   txt "(" <>
   intercalate (txt ", ") (map txt args) <> 
   txt ")"
-irDoc (MixinIr name) =
-  text "blue" "mixin " <>
+irDoc (WithIr name) =
+  text "blue" "with " <>
   txt name
 
 showIr :: Int -> Ir -> String
