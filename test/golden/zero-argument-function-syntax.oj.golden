@@ -1,1 +1,1 @@
-function _() {const f = function _(_handle) {return 1;};return f;}()
+(() => {const f = function (_handle) {return 1;};return f;})()

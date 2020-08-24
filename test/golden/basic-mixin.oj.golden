@@ -1,5 +1,1 @@
-function _() {
-  return function _(_handle, _object, _mixin) {
-    return { ..._object, x: _mixin };
-  };
-}()
+(() => {return ((_handle, _object, _mixin) => { ..._object, x: _mixin });})()

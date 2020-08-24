@@ -1,4 +1,4 @@
-function _() {
+(() => {
   function _Point(x, y) {
     this.x = { ...x, set: function _(_handle, x) { return { ...this, x }; } };
     this.y = { ...y, set: function _(_handle, y) { return { ...this, y }; } };
@@ -7,4 +7,4 @@ function _() {
   function Point(_handle, x, y) { return new _Point(x, y); };
   const point = Point;
   return point;
-}()
+})()

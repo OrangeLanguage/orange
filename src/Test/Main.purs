@@ -23,7 +23,8 @@ main = Golden.runSuite [
   generatorTest "lazy identity" "test/golden/lazy-identity.oj",
   generatorTest "basic mixin" "test/golden/basic-mixin.oj",
   generatorTest "basic trailing block" "test/golden/basic-trailing-block.oj",
-  generatorTest "lens composition" "test/golden/lens-composition.oj"
+  generatorTest "lens composition" "test/golden/lens-composition.oj",
+  generatorTest "basic extension" "test/golden/basic-extension.oj"
 ]
 
 generatorTest :: String -> FilePath -> Golden.Test

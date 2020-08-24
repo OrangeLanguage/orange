@@ -1,0 +1,7 @@
+(() => {
+  _Int.prototype.inc = function (_handle) {
+    return (this._dot(_o => _o.add))(_handle, () => 1);
+  };
+  Int;
+  return inc;
+})()

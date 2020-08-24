@@ -1,8 +1,1 @@
-function _() {
-  const one = function _() {
-    const a = 1;
-    a;
-    return a;
-  }();
-  return one;
-}()
+(() => {const one = (() => {const a = 1;a;return a;})();return one;})()

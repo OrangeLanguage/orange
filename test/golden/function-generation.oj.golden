@@ -1,8 +1,8 @@
-function _() {
-  const const = function _(_handle, x, y) {
+(() => {
+  const const = function (_handle, x, y) {
     x = x();
     y = y();
     return x;
   };
   return const;
-}()
+})()

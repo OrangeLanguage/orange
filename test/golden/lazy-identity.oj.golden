@@ -1,1 +1,1 @@
-function _() {return function _(_handle, x) {return x;};}()
+(() => {return function (_handle, x) {return x;};})()

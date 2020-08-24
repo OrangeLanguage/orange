@@ -1,1 +1,1 @@
-function _() {const x = 8;return x;}()
+(() => {const x = 8;return x;})()

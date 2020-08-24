@@ -52,7 +52,7 @@ generateDoc (ApplyIr ir args) = do
 generateDoc (BlockIr irs) = 
   let (Tuple irDocs docs) = runWriter $ traverse generateDoc irs
   in pure $ 
-    txt "function _() {" <>
+    txt "(() => {" <>
     nest 2 (
       line <> 
       docs <>
@@ -61,11 +61,11 @@ generateDoc (BlockIr irs) =
       maybe (txt "unit") (\x -> x) (last irDocs) <>
       txt ";") <>
     line <>
-    txt "}()"
+    txt "})()"
 generateDoc (LambdaIr args ir) = do
   irDoc <- generateDoc ir
   pure $ 
-    txt "function _(" <> 
+    txt "function (" <> 
     intercalate (txt ", ") (txt "_handle" : map (snd >>> txt) args) <> 
     txt ") {" <>
     nest 2 (
@@ -82,9 +82,9 @@ generateDoc (DoIr ir name cont) = do
   pure $ 
     txt "_handle(" <>
     irDoc <>
-    txt ", function _(_handle, " <>
+    txt ", (_handle, " <>
     txt name <>
-    txt ") {" <>
+    txt ") => {" <>
     nest 2 (
       line <>
       txt "return " <>
@@ -96,14 +96,14 @@ generateDoc (HandleIr ir cont) = do
   irDoc <- generateDoc ir
   contDoc <- generateDoc cont
   pure $ 
-    txt "function _(_handle) {" <>
+    txt "((_handle) => {" <>
     nest 2 (
       line <>
       txt "return " <>
       irDoc <>
       txt ";") <>
     line <>
-    txt "}(function _(resume, _do) {" <>
+    txt "})((resume, _do) => {" <>
     nest 2 (
       line <>
       txt "return " <>
@@ -160,14 +160,12 @@ generateDoc (ClassIr name args) = do
     line
   pure $ txt name
 generateDoc (MixinIr name) = pure $ 
-  txt "function _(_handle, _object, _mixin) {" <>
+  txt "((_handle, _object, _mixin) => " <>
   nest 2 (
-    line <>
-    txt "return { ..._object, " <>
+    txt "{ ..._object, " <>
     txt name <>
-    txt ": _mixin };") <>
-  line <>
-  txt "}" 
+    txt ": _mixin }") <>
+  txt ")"
 
 generate :: Int -> Ir -> String
 generate width ir = 
