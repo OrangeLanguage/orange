@@ -22,9 +22,9 @@ classArgDoc name =
   txt name <>
   txt " = { ..." <>
   txt name <>
-  txt ", set: function _(_handle, " <>
+  txt ", set: (_handle, " <>
   txt name <>
-  txt ") { return { ...this, " <>
+  txt ") => { return { ...this, " <>
   txt name <> 
   txt " }; } };"
 
