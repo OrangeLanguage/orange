@@ -65,7 +65,7 @@ generateDoc (BlockIr irs) =
 generateDoc (LambdaIr args ir) = do
   irDoc <- generateDoc ir
   pure $ 
-    txt "function (" <> 
+    txt "(function (" <> 
     intercalate (txt ", ") (txt "_handle" : map (snd >>> txt) args) <> 
     txt ") {" <>
     nest 2 (
@@ -75,7 +75,7 @@ generateDoc (LambdaIr args ir) = do
       irDoc <>
       txt ";") <>
     line <>
-    txt "}"
+    txt "})"
 generateDoc (DoIr ir name cont) = do
   irDoc <- generateDoc ir
   contDoc <- generateDoc cont
