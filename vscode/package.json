@@ -1,0 +1,29 @@
+{
+    "name": "vscode-orange",
+    "displayName": "vscode-orange",
+    "description": "",
+    "version": "0.0.1",
+    "publisher": "OrangeLang",
+    "repository": {
+        "url": "http://github.com/OrangeLanguage/orange"
+    },
+    "engines": {
+        "vscode": "^1.47.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "orange",
+            "aliases": ["Orange", "orange"],
+            "extensions": [".oj"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "orange",
+            "scopeName": "source.oj",
+            "path": "./syntaxes/orange.tmLanguage.json"
+        }]
+    }
+}

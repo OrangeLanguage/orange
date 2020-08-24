@@ -1,0 +1,105 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Orange",
+	"patterns": [
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#application"
+		},
+		{
+			"include": "#keyword-application"
+		},
+		{
+			"include": "#simple-application"
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#chars"
+		},
+		{
+			"include": "#integers"
+		},
+		{
+			"include": "#comments"
+		}
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [
+				{
+					"name": "keyword.orange",
+					"match": "\\b(def|infix|left|right|class|this|with|lazy|do|handle|resume|extern)\\b"
+				}
+			]
+		},
+		"application": {
+			"patterns": [
+				{
+					"captures": {
+						"1": { "name": "entity.name.function.orange" }
+					},
+					"match": "([a-zA-Z]+)\\("
+				}
+			]
+		},
+		"keyword-application": {
+			"patterns": [
+				{
+					"captures": {
+						"1": { "name": "keyword.control.orange" }
+					},
+					"match": "([a-zA-Z]+)\\s+\\("
+				}
+			]
+		},
+		"strings": {
+			"name": "string.quoted.double.orange",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.orange",
+					"match": "\\\\."
+				}
+			]
+		},
+		"chars": {
+			"name": "string.quoted.single.orange",
+			"begin": "'",
+			"end": "'",
+			"patterns": [
+				{
+					"name": "constant.character.escape.orange",
+					"match": "\\\\."
+				}
+			]
+		},
+		"integers": {
+			"patterns": [
+				{
+					"name": "constant.numeric.orange",
+					"match": "-?[0-9][0-9.]*"
+				}
+			]
+		},
+		"comments": {
+			"patterns": [
+				{
+					"name": "comment.line",
+					"begin": "//",
+					"end": "\r|\n"
+				},
+				{
+					"name": "comment.block",
+					"begin": "/\\*",
+					"end": "\\*/"
+				}
+			]
+		}
+	},
+	"scopeName": "source.oj"
+}
