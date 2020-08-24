@@ -66,7 +66,7 @@ compileTopLevel expr = do
       prev <- get
       let newState = prev <> [generated]
       put newState
-      liftEffect $ evalString $ intercalate "\n" newState
+      liftEffect $ evalString $ intercalate ";\n" newState
 
 tryCompile :: String -> NodeRepl (Maybe Ir)
 tryCompile program = do
