@@ -13,7 +13,7 @@ exports.colorize = (c) => (str) => {
     case "orange":
       return chalk.keyword("orange")(str);
     case "red":
-      return chalk.red(str);
+      return chalk.redBright(str);
     default:
       return str;
   }

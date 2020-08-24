@@ -1,0 +1,14 @@
+(() => {
+  const const = function (_handle, x, y) {
+    x = x();
+    y = y();
+    return x;
+  };
+  const tsnoc = function (_handle, x, y) {
+    x = x();
+    y = y();
+    return y;
+  };
+  const;
+  return tsnoc;
+})()

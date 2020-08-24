@@ -1,0 +1,1 @@
+exports.evalString = function (s) { return function () { return String(eval(s)); } };

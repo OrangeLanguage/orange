@@ -24,7 +24,8 @@ main = Golden.runSuite [
   generatorTest "basic mixin" "test/golden/basic-mixin.oj",
   generatorTest "basic trailing block" "test/golden/basic-trailing-block.oj",
   generatorTest "lens composition" "test/golden/lens-composition.oj",
-  generatorTest "basic extension" "test/golden/basic-extension.oj"
+  generatorTest "basic extension" "test/golden/basic-extension.oj",
+  generatorTest "multiple functions" "test/golden/multiple-function-generation.oj"
 ]
 
 generatorTest :: String -> FilePath -> Golden.Test

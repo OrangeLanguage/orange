@@ -1,0 +1,2 @@
+def const(x, y) x
+def tsnoc(x, y) y
