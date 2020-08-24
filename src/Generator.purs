@@ -143,7 +143,7 @@ generateDoc (ClassIr name args) = do
     nest 2 (
       fold (map classArgDoc args) <>
       line <>
-      txt "this.dot = (_f) => { ..._f(this), dot: (_g) => this.dot((_o) => _g(_f(_o))) };") <>
+      txt "this.dot = (_f) => { return { ..._f(this), dot: (_g) => this.dot((_o) => _g(_f(_o))) } };") <>
     line <>
     txt "};" <>
     line
