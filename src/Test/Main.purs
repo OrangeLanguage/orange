@@ -23,7 +23,6 @@ main = Golden.runSuite [
   generatorTest "lazy identity" "test/golden/lazy-identity.oj",
   generatorTest "basic with" "test/golden/basic-with.oj",
   generatorTest "basic trailing block" "test/golden/basic-trailing-block.oj",
-  generatorTest "lens composition" "test/golden/lens-composition.oj",
   generatorTest "basic extension" "test/golden/basic-extension.oj",
   generatorTest "multiple functions" "test/golden/multiple-function-generation.oj"
 ]

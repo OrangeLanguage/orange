@@ -25,6 +25,7 @@ argDoc :: Eval -> String -> DOC
 argDoc eval name = evalDoc eval <> txt name
 
 exprDoc :: Expr -> DOC
+exprDoc (BoolExpr bool) = if bool then text "blue" "true" else text "blue" "false"
 exprDoc (IntExpr int) = intDoc int
 exprDoc (CharExpr char) = text "green" $ show char
 exprDoc (StringExpr string) = text "green" $ show string
@@ -88,6 +89,7 @@ showExpr :: Int -> Expr -> String
 showExpr width expr = pretty width $ group $ exprDoc expr
 
 irDoc :: Ir -> DOC
+irDoc (BoolIr bool) = if bool then text "blue" "true" else text "blue" "false"
 irDoc (IntIr int) = intDoc int
 irDoc (CharIr char) = text "green" $ show char
 irDoc (StringIr string) = text "green" $ show string

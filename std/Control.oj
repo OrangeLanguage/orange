@@ -1,10 +1,10 @@
 def if class If(cond, t)
 
 def If.elif(lazy cond, lazy t) 
-    this.cond.if(this.t, If(cond, t))
+    this.cond.if(this.t(), If(cond, t))
 
 def If.else(lazy f) 
-    this.cond.if(this.t, f)
+    this.cond.if(this.t(), f())
 
 def while(lazy cond, lazy then) {
     def go() 

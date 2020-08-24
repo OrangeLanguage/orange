@@ -74,6 +74,7 @@ compile :: forall m. Monad m => Expr -> CompilerT m Ir
 compile expr = compileCont expr pure 
 
 compileCont :: forall m. Monad m => Expr -> (Ir -> CompilerT m Ir) -> CompilerT m Ir
+compileCont (BoolExpr int) f = f $ BoolIr int
 compileCont (IntExpr int) f = f $ IntIr int
 compileCont (CharExpr char) f = f $ CharIr char
 compileCont (StringExpr string) f = f $ StringIr string

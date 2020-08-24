@@ -13,7 +13,8 @@ data Eval = EagerEval | LazyEval
 data Op = Op Assoc BigInt Expr
 
 data Expr
-  = IntExpr BigInt
+  = BoolExpr Boolean
+  | IntExpr BigInt
   | CharExpr Char
   | StringExpr String
   | IdentExpr String
@@ -31,7 +32,8 @@ data Expr
   | ExternExpr String
 
 data Ir
-  = IntIr BigInt
+  = BoolIr Boolean
+  | IntIr BigInt
   | CharIr Char
   | StringIr String
   | IdentIr String

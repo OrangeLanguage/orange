@@ -1,10 +1,7 @@
-(() => {
-  function _Point(x, y) {
-    this.x = { ...x, set: (_handle, x) => { return { ...this, x }; } };
-    this.y = { ...y, set: (_handle, y) => { return { ...this, y }; } };
-    this._dot = (_f) => { ..._f(this), _dot: (_g) => this._dot((_o) => _f(_g(_o))) };
-  };
-  function Point(_handle, x, y) { return new _Point(x, y); };
-  const point = Point;
-  return point;
-})()
+function _Point(x, y) {
+  this.x = x;
+  this.y = y;
+};
+function Point(_handle, x, y) { return new _Point(x(), y()); };
+const point = Point;
+point

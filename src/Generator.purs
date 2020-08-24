@@ -20,27 +20,24 @@ classArgDoc name =
   line <>
   txt "this." <> 
   txt name <>
-  txt " = { ..." <>
-  txt name <>
-  txt ", set: (_handle, " <>
-  txt name <>
-  txt ") => ({ ...this, " <>
+  txt " = " <>
   txt name <> 
-  txt "}) };"
+  txt ";"
 
 generateDoc :: Ir -> Writer DOC DOC
-generateDoc (IntIr int) = pure $ txt $ "(" <> toString int <> ")"
-generateDoc (CharIr char) = pure $ txt $ show char
-generateDoc (StringIr string) = pure $ txt $ show string
+generateDoc (BoolIr bool) = pure $ txt $ if bool then "_true" else "_false"
+generateDoc (IntIr int) = pure $ txt $ "new Int(" <> toString int <> ")"
+generateDoc (CharIr char) = pure $ txt $ "new Char(" <> show char <> ")"
+generateDoc (StringIr string) = pure $ txt $ "new String(" <> show string <> ")"
 generateDoc (IdentIr name) = pure $ txt name
 generateDoc (DotIr ir name) = do
   irDoc <- generateDoc ir
   pure $ 
     txt "(" <> 
     irDoc <>
-    txt ".dot(_o => _o." <>
+    txt "." <>
     txt name <>
-    txt "))"
+    txt ")"
 generateDoc (ApplyIr ir args) = do
   irDoc <- generateDoc ir
   argsDoc <- traverse (\arg -> generateDoc arg <#> (<>) (txt "() => ")) args
@@ -136,10 +133,7 @@ generateDoc (ClassIr name args) = do
     txt "(" <>
     intercalate (txt ", ") (map txt args) <> 
     txt ") {" <>
-    nest 2 (
-      fold (map classArgDoc args) <>
-      line <>
-      txt "this.dot = (_f) => ({ ..._f(this), dot: (_g) => this.dot((_o) => _g(_f(_o))) });") <>
+    nest 2 (fold (map classArgDoc args)) <>
     line <>
     txt "};" <>
     line
@@ -151,7 +145,7 @@ generateDoc (ClassIr name args) = do
     txt ") { return new _" <> 
     txt name <>
     txt "(" <>
-    intercalate (txt ", ") (map txt args) <>
+    intercalate (txt ", ") (map (\n -> txt n <> txt "()") args) <>
     txt "); };" <>
     line
   pure $ txt name

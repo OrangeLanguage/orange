@@ -1,11 +1,5 @@
-def true class True()()
-def false class False()()
-
-def True.if(t, f) t()
-def False.if(t, f) f()
-
-def and(a, lazy b) a.if(b, () false)
-def or(a, lazy b) a.if(() true, b)
+def and(a, lazy b) a.and(b())
+def or(a, lazy b) a.or(b())
 
 infix right 3 && and
 infix right 2 || or

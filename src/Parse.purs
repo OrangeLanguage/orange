@@ -45,6 +45,12 @@ escape = do
   void $ string "\\\""
   pure '"'
 
+parseBool :: Parser Boolean
+parseBool = do
+  bool <- (string "true" *> pure true) <|> (string "false" *> pure false)
+  ignored
+  pure bool
+
 parseInt :: Parser BigInt
 parseInt = do
   sign <- option "" $ string "-"
@@ -117,6 +123,7 @@ parseAtomic unit =
   parseExtern <|>
   parseWith <|>
   parseBlock <|> 
+  BoolExpr <$> parseBool <|>
   IntExpr <$> parseInt <|> 
   CharExpr <$> parseChar <|> 
   StringExpr <$> parseString <|> 

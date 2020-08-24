@@ -82,7 +82,8 @@ liftCompiler comp = NodeRepl $ lift $ lift $ lift $ transformCompilerT (unwrap >
 evalNodeRepl :: forall a. NodeRepl a -> Effect Unit
 evalNodeRepl nodeRepl = do
   interface <- createConsoleInterface noCompletion
-  void $ runContT (runCompilerT (evalStateT (runExceptT $ runReaderT (unwrap nodeRepl) interface) ["const _handle = (x) => { console.log(`Unhandled effect ${x}`); }"]) (Env 0 mempty mempty)) $ either throw (const $ pure unit)
+  prelude <- readTextFile UTF8 "std/Prelude.js"
+  void $ runContT (runCompilerT (evalStateT (runExceptT $ runReaderT (unwrap nodeRepl) interface) [prelude]) (Env 0 mempty mempty)) $ either throw (const $ pure unit)
 
 query :: String -> NodeRepl String
 query prompt = do

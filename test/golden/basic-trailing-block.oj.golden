@@ -1,1 +1,1 @@
-(() => {return else(_handle, () => (() => {return 1;})());})()
+else(_handle, () => new Int(1))

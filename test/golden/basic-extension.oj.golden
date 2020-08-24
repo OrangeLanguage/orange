@@ -1,7 +1,7 @@
 (() => {
-  _Int.prototype.inc = function (_handle) {
-    return (this._dot(_o => _o.add))(_handle, () => 1);
-  };
+  _Int.prototype.inc = (function (_handle) {
+    return (this.add)(_handle, () => new Int(1));
+  });
   Int;
   return inc;
 })()
