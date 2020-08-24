@@ -29,7 +29,7 @@ classArgDoc name =
   txt " }; } };"
 
 generateDoc :: Ir -> Writer DOC DOC
-generateDoc (IntIr int) = pure $ txt $ toString int
+generateDoc (IntIr int) = pure $ txt $ "(" <> toString int <> ")"
 generateDoc (CharIr char) = pure $ txt $ show char
 generateDoc (StringIr string) = pure $ txt $ show string
 generateDoc (IdentIr name) = pure $ txt name
@@ -38,7 +38,7 @@ generateDoc (DotIr ir name) = do
   pure $ 
     txt "(" <> 
     irDoc <>
-    txt "._dot(_o => _o." <>
+    txt ".dot(_o => _o." <>
     txt name <>
     txt "))"
 generateDoc (ApplyIr ir args) = do
