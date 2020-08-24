@@ -22,7 +22,8 @@ main = Golden.runSuite [
   generatorTest "zero argument function syntax" "test/golden/zero-argument-function-syntax.oj",
   generatorTest "lazy identity" "test/golden/lazy-identity.oj",
   generatorTest "basic mixin" "test/golden/basic-mixin.oj",
-  generatorTest "basic trailing block" "test/golden/basic-trailing-block.oj"
+  generatorTest "basic trailing block" "test/golden/basic-trailing-block.oj",
+  generatorTest "lens composition" "test/golden/lens-composition.oj"
 ]
 
 generatorTest :: String -> FilePath -> Golden.Test

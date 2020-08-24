@@ -1,0 +1,1 @@
+function _() {return ((1._dot(_o => _o.x))._dot(_o => _o.y));}()

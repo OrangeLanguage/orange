@@ -38,9 +38,9 @@ generateDoc (DotIr ir name) = do
   pure $ 
     txt "(" <> 
     irDoc <>
-    txt "." <>
+    txt "._dot(_o => _o." <>
     txt name <>
-    txt ")"
+    txt "))"
 generateDoc (ApplyIr ir args) = do
   irDoc <- generateDoc ir
   argsDoc <- traverse (\arg -> generateDoc arg <#> (<>) (txt "() => ")) args
@@ -140,7 +140,10 @@ generateDoc (ClassIr name args) = do
     txt "(" <>
     intercalate (txt ", ") (map txt args) <> 
     txt ") {" <>
-    nest 2 (fold (map classArgDoc args)) <>
+    nest 2 (
+      fold (map classArgDoc args) <>
+      line <>
+      txt "this._dot = (_f) => { ..._f(this), _dot: (_g) => this._dot((_o) => _f(_g(_o))) };") <>
     line <>
     txt "};" <>
     line
