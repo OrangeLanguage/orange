@@ -5,10 +5,6 @@ class Bool {
         this.value = value;
     }
 
-    dot(f) {
-        return f(this);
-    }
-
     toString() {
         return this.value.toString();
     }
@@ -28,18 +24,9 @@ class Bool {
 const _true = new Bool(true);
 const _false = new Bool(false);
 
-function getter(tw, property) {
-    return tw[property].bind ? tw[property].bind(tw) : tw[property];
-}
-
 class Int {
     constructor(value) {
         this.value = value;
-    }
-
-    dot(f) {
-        const o = f(this);
-        return { __proto__: o.__proto__, ...o, dot: (_g) => this.dot((_o) => _g(_f(_o))) };
     }
 
     toString() {
@@ -66,10 +53,6 @@ class Char {
         this.value = value;
     }
 
-    dot(f) {
-        return f(this);
-    }
-
     toString() {
         return this.value.toString();
     }
@@ -78,10 +61,6 @@ class Char {
 class String {
     constructor(value) {
         this.value = value;
-    }
-
-    dot(f) {
-        return f(this);
     }
 
     toString() {

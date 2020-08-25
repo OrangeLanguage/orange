@@ -37,8 +37,13 @@ incremental more incrementalParser = do
       else
         throwError e
 
+comment :: Parser Unit
+comment = do
+  void $ string "//" 
+  void $ many $ noneOf ['\r', '\n']
+
 ignored :: Parser Unit
-ignored = skipMany space
+ignored = skipMany (void space <|> comment)
 
 escape :: Parser Char
 escape = do
