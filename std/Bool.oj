@@ -1,5 +1,0 @@
-def and(a, lazy b) a.and(b())
-def or(a, lazy b) a.or(b())
-
-infix right 3 && and
-infix right 2 || or

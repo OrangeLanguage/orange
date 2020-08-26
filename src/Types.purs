@@ -11,6 +11,8 @@ data Assoc = LeftAssoc | RightAssoc
 data Eval = EagerEval | LazyEval
 
 data Op = Op Assoc BigInt Expr
+data Arg = Arg Eval String
+data Pattern = Pattern String (List Arg) Expr
 
 data Expr
   = BoolExpr Boolean
@@ -22,9 +24,10 @@ data Expr
   | ApplyExpr Expr (List Expr)
   | OpExpr Expr (List (Tuple String Expr))
   | BlockExpr (List Expr)
-  | LambdaExpr (List (Tuple Eval String)) Expr
+  | LambdaExpr (List Arg) Expr
   | DoExpr Expr
   | HandleExpr Expr Expr
+  | MatchExpr Expr (List Pattern)
   | DefExpr (Maybe String) String Expr
   | InfixExpr Assoc String BigInt Expr
   | ClassExpr String (List String)
@@ -40,7 +43,7 @@ data Ir
   | DotIr Ir String
   | ApplyIr Ir (List Ir)
   | BlockIr (List Ir)
-  | LambdaIr (List (Tuple Eval String)) Ir
+  | LambdaIr (List Arg) Ir
   | DoIr Ir String Ir
   | HandleIr Ir Ir
   | DefIr String Ir

@@ -7,13 +7,13 @@ import Data.BigInt (toString)
 import Data.List (fold, init, intercalate, last, (:))
 import Data.Maybe (maybe)
 import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..), snd, uncurry)
+import Data.Tuple (Tuple(..))
 import Prettier.Printer (DOC, group, line, nest, nil, pretty, txt)
-import Types (Eval(..), Ir(..))
+import Types (Arg(..), Eval(..), Ir(..))
 
-evalDoc :: Eval -> String -> DOC
-evalDoc EagerEval name = txt name <> txt " = " <> txt name <> txt "();" <> line
-evalDoc LazyEval name = nil
+argDoc :: Arg -> DOC
+argDoc (Arg EagerEval name) = txt name <> txt " = " <> txt name <> txt "();" <> line
+argDoc (Arg LazyEval name) = nil
 
 classArgDoc :: String -> DOC
 classArgDoc name = 
@@ -26,9 +26,9 @@ classArgDoc name =
 
 generateDoc :: Ir -> Writer DOC DOC
 generateDoc (BoolIr bool) = pure $ txt $ if bool then "_true" else "_false"
-generateDoc (IntIr int) = pure $ txt $ "new Int(" <> toString int <> ")"
-generateDoc (CharIr char) = pure $ txt $ "new Char(" <> show char <> ")"
-generateDoc (StringIr string) = pure $ txt $ "new String(" <> show string <> ")"
+generateDoc (IntIr int) = pure $ txt $ "new _Int(" <> toString int <> ")"
+generateDoc (CharIr char) = pure $ txt $ "new _Char(" <> show char <> ")"
+generateDoc (StringIr string) = pure $ txt $ "new _String(" <> show string <> ")"
 generateDoc (IdentIr name) = pure $ txt name
 generateDoc (DotIr ir name) = do
   irDoc <- generateDoc ir
@@ -63,11 +63,11 @@ generateDoc (LambdaIr args ir) = do
   irDoc <- generateDoc ir
   pure $ 
     txt "(function (" <> 
-    intercalate (txt ", ") (txt "_handle" : map (snd >>> txt) args) <> 
+    intercalate (txt ", ") (txt "_handle" : map (\(Arg eval name) -> txt name) args) <> 
     txt ") {" <>
     nest 2 (
       line <>
-      fold (map (uncurry evalDoc) args) <>
+      fold (map argDoc args) <>
       txt "return " <> 
       irDoc <>
       txt ";") <>
@@ -125,7 +125,11 @@ generateDoc (ExtendIr clazz name ir) = do
     irDoc <>
     txt ";" <>
     line
-  pure $ txt name
+  pure $ 
+    txt "_" <>
+    txt clazz <>
+    txt ".prototype." <>
+    txt name
 generateDoc (ClassIr name args) = do
   tell $
     txt "function _" <>
@@ -134,6 +138,39 @@ generateDoc (ClassIr name args) = do
     intercalate (txt ", ") (map txt args) <> 
     txt ") {" <>
     nest 2 (fold (map classArgDoc args)) <>
+    line <>
+    txt "};" <>
+    line
+  tell $
+    txt "_" <>
+    txt name <>
+    txt ".prototype = Object.create(_Any.prototype);" <>
+    line
+  tell $
+    txt "_Any.prototype.as" <>
+    txt name <>
+    txt " = function (_handle, f, cont) {" <> 
+    nest 2 (
+      line <>
+      txt "f = f();" <>
+      line <>
+      txt "return cont(_handle)") <>
+    line <>
+    txt "};" <>
+    line
+  tell $
+    txt "_" <>
+    txt name <> 
+    txt ".prototype.as" <>
+    txt name <> 
+    txt " = function (_handle, f, cont) {" <>
+    nest 2 (
+      line <>
+      txt "f = f();" <>
+      line <>
+      txt "return f(_handle, " <>
+      intercalate (txt ", ") (map (\n -> txt "() => this." <> txt n) args) <>
+      txt ")") <>
     line <>
     txt "};" <>
     line

@@ -3,6 +3,20 @@ def cons class Cons(car, cdr)
 
 infix right 5 : cons
 
-def Nil.fold(acc, f) acc
-def Cons.fold(acc, f) 
-    this.cdr.fold(f(this.car, acc), f)
+def listToString(list) match list {
+    Nil() "nil"
+    Cons(car, cdr) car.toString() + " : " + listToString(cdr)
+}
+
+def Nil.toString() listToString(this)
+def Cons.toString() listToString(this)
+
+def map(list, f) match list {
+    Nil() nil
+    Cons(car, cdr) f(car) : map(cdr, f)
+}
+
+def fold(list, acc, f) match list {
+    Nil() acc
+    Cons(car, cdr) fold(cdr, f(car, acc), f)
+}

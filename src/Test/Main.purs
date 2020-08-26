@@ -31,6 +31,6 @@ generatorTest :: String -> FilePath -> Golden.Test
 generatorTest name path = Golden.basic name path \input -> do
   let parseResult = runParser input parseProgram
   exprs <- either (\e -> throw $ show e) pure parseResult
-  let compileResult = evalCompiler (compile $ BlockExpr exprs) (Env 0 mempty mempty)
+  let compileResult = evalCompiler (compile $ BlockExpr exprs) (Env 0 mempty)
   ir <- either (\e -> throw e) pure compileResult
   pure $ generate 80 ir
