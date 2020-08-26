@@ -91,12 +91,6 @@ exprDoc (ClassExpr name args) =
   txt "(" <>
   intercalate (txt ", ") (map txt args) <> 
   txt ")"
-exprDoc (WithExpr name) =
-  text "blue" "with " <>
-  txt name
-exprDoc (ExternExpr name) = 
-  text "blue" "extern " <> 
-  txt name
 
 showExpr :: Int -> Expr -> String
 showExpr width expr = pretty width $ group $ exprDoc expr
@@ -168,9 +162,6 @@ irDoc (ClassIr name args) =
   txt "(" <>
   intercalate (txt ", ") (map txt args) <> 
   txt ")"
-irDoc (WithIr name) =
-  text "blue" "with " <>
-  txt name
 
 showIr :: Int -> Ir -> String
 showIr width ir = pretty width $ group $ irDoc ir

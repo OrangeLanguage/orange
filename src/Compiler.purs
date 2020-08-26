@@ -112,8 +112,6 @@ compileCont (InfixExpr assoc name prec expr) f = do
   void $ modify $ insertOp assoc name prec expr
   compileCont expr f
 compileCont (ClassExpr name args) f = f $ ClassIr name args
-compileCont (WithExpr name) f = f $ WithIr name
-compileCont (ExternExpr name) f = f $ IdentIr name
 
 compileConts :: forall m. Monad m => List Expr -> (List Ir -> CompilerT m Ir) -> CompilerT m Ir
 compileConts Nil f = f Nil

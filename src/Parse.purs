@@ -99,20 +99,6 @@ parseClass = do
   ignored
   pure $ ClassExpr name args
 
-parseWith :: Parser Expr
-parseWith = do
-  void $ string "with"
-  ignored
-  name <- parseIdent
-  pure $ WithExpr name
-
-parseExtern :: Parser Expr
-parseExtern = do
-  void $ string "extern"
-  ignored
-  name <- parseIdent
-  pure $ ExternExpr name
-
 parseBlock :: Parser Expr
 parseBlock = do
   void $ char '{'
@@ -125,8 +111,6 @@ parseBlock = do
 parseAtomic :: Unit -> Parser Expr
 parseAtomic unit = 
   parseClass <|> 
-  parseExtern <|>
-  parseWith <|>
   parseBlock <|> 
   BoolExpr <$> parseBool <|>
   IntExpr <$> parseInt <|> 

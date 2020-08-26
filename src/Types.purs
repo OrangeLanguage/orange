@@ -31,8 +31,6 @@ data Expr
   | DefExpr (Maybe String) String Expr
   | InfixExpr Assoc String BigInt Expr
   | ClassExpr String (List String)
-  | WithExpr String
-  | ExternExpr String
 
 data Ir
   = BoolIr Boolean
@@ -49,6 +47,5 @@ data Ir
   | DefIr String Ir
   | ExtendIr String String Ir
   | ClassIr String (List String)
-  | WithIr String
 
 derive instance eqAssoc :: Eq Assoc

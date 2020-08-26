@@ -42,7 +42,7 @@
 					"captures": {
 						"1": { "name": "entity.name.function.orange" }
 					},
-					"match": "([a-zA-Z]+)\\("
+					"match": "([a-zA-Z]+)(\\(|\\{)"
 				}
 			]
 		},
@@ -52,7 +52,7 @@
 					"captures": {
 						"1": { "name": "keyword.control.orange" }
 					},
-					"match": "([a-zA-Z]+)\\s+\\("
+					"match": "([a-zA-Z]+)\\s+(\\(|\\{)"
 				}
 			]
 		},

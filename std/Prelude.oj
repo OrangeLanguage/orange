@@ -4,8 +4,6 @@ def or(a, lazy b) a.or(b())
 infix right 3 && and
 infix right 2 || or
 
-def Bool.toString() this.if("true", "false")
-
 def add(x, y) x.add(y)
 def sub(x, y) x.sub(y)
 def mul(x, y) x.mul(y)
@@ -20,8 +18,6 @@ infix left 7 / div
 infix left 7 % rem
 infix left 8 ^ pow
 
-def Int.toString() extern intToString(this)
-
 def lt(x, y) x.lt(y)
 def gt(x, y) x.gt(y)
 def eq(x, y) x.eq(y)
@@ -35,5 +31,3 @@ infix left 4 == eq
 infix left 4 <= leq
 infix left 4 >= geq
 infix left 4 != neq
-
-def String.toString() this

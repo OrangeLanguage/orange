@@ -1,13 +1,39 @@
-def if class If(cond, t)
+// If expressions are emulated using a combination of trailing block expressions
+// and lazy arguments. They are semantically equivalent to the Bool.if method, 
+// but are much easier to read when several conditions are chained.
+//
+// if (condition1) { 
+//   consequent1
+// }.elif (condition2) { 
+//   consequent2 
+// }.else {
+//   alternative
+// }
+//
+// Since they are method calls, simple consequents can be moved inside the 
+// argument list.
+//
+// if(condition1, consequent1)
+// .elif(condition2, consequent2)
+// .else(alternative)
+//
+// While if expressions are generic and easy to use, more specific constructs
+// such as pattern matching and Bool.if should be used where possible.
 
-def If.elif(lazy cond, lazy t) 
-    this.cond.if(this.t(), If(cond, t))
+// Represents an if expression that has terminated with a result.
+class Then(result)
 
-def If.else(lazy f) 
-    this.cond.if(this.t(), f())
+// Represents an if expression that has not yet terminated.
+def else class Else()()
 
-def while(lazy cond, lazy then) {
-    def go() 
-        cond().if(() { then() go() }, () {})
-    go()
-}
+// Begins an if expression with a condition and consequent.
+def if(lazy condition, lazy consequent) 
+    condition().if(Then(consequent()), else)
+
+// Continues an if expression with a condition and a consequent.
+def Then.elif(lazy condition, lazy consequent) this
+def Else.elif if
+
+// Terminates an if expression with an alternative.
+def Then.else(lazy alternative) this.result
+def Else.else(lazy alternative) alternative()
