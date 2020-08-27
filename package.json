@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "repl": "spago run",
+    "repl": "npm run replit && spago run",
     "replit": "spago bundle-app",
     "start": "npm install && node index.js"
   },
