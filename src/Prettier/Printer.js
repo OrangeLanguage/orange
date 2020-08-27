@@ -1,4 +1,7 @@
 const chalk = require("chalk");
+const highlight = require("cli-highlight").highlight;
+
+exports.highlightJS = (source) => highlight(source, { language: "js" });
 
 exports.colorize = (c) => (str) => {
   switch (c) {

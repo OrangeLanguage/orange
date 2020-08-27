@@ -29,7 +29,7 @@ import Node.FS.Sync (readTextFile)
 import Node.Path (FilePath)
 import Node.ReadLine (Interface, createConsoleInterface, noCompletion, question)
 import Parse (incremental, parseProgram, parseRepl)
-import Prettier.Printer (colorize)
+import Prettier.Printer (colorize, highlightJS)
 import Pretty (showExpr, showIr)
 import Text.Parsing.Parser (ParseError, ParserT, hoistParserT, runParser, runParserT)
 import Types (Expr, Ir)
@@ -119,7 +119,7 @@ compile expr = do
 generate :: String -> NodeRepl Unit
 generate expr = do
   ir <- tryCompile expr
-  maybe (pure unit) (log <<< Generator.generate 40) ir
+  maybe (pure unit) (log <<< highlightJS <<< Generator.generate 40) ir
 
 eval :: String -> NodeRepl Unit
 eval expr = do

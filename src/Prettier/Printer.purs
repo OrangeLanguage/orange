@@ -46,6 +46,7 @@ module Prettier.Printer
   , (</>)
   , (<+/>)
   , colorize
+  , highlightJS
   ) where
 
 import Prelude
@@ -59,6 +60,7 @@ import Data.String as String
 import Data.Tuple (Tuple(..))
 
 foreign import colorize :: String -> String -> String
+foreign import highlightJS :: String -> String
 
 data DOC
   = NIL

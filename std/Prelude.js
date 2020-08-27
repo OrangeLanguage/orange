@@ -29,7 +29,7 @@ const _false = new _Bool(false);
 class _Int extends _Any {
     constructor(value) {
         super();
-        this.value = value;
+        this.value = (value);
     }
 
     toString(_cont) { return _cont()(() => new _String(this.value.toString())); }
