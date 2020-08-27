@@ -1,1 +1,1 @@
-(() => {return ((_handle, _object, _with) => { ..._object, x: _with });})()
+((_handle, _object, _with) => ({ ..._object, x: _with }))
