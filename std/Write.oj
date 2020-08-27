@@ -1,0 +1,22 @@
+// The write effect allows a function to write elements to an output. The output 
+// is defined by the handler so functions will work with any output. Writing can
+// perform IO such as logging to standard out, but can also be pure such as
+// collecting in a list.
+class Write(elem)
+
+def write(elem) do Write(elem)
+
+// Handles the write effect by logging each element.
+def writeLog(f)
+    handle (f()) (effect) match (effect) {
+        Write(elem) {
+            log(elem)
+            writeLog(() resume({}))
+        }
+    }
+
+// Handles the write effect by writing to a list.
+def writeList(list, f)
+    handle ({ f() list }) (effect) match (effect) {
+        Write(elem) writeList(elem : list, () resume({}))
+    }

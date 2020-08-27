@@ -1,2 +1,1 @@
-def hello() 
-    log("Hello, world!")
+log("Hello, world!")

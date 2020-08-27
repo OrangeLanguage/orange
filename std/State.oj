@@ -1,0 +1,20 @@
+// The state effect allows functions to operate on a mutable state. The scope of
+// the state is equal to the scope of the handler, so it can be local to a 
+// function or shared across a program. While the state effect is generic and
+// expressive, simpler constructs such as recursion and list transformations
+// should be used where possible.
+class Get()
+class Set(state)
+
+def get() do Get()
+def set(state) do Set(state)
+
+// Modifies the state with a function.
+def modify(f) set(f(get()))
+
+// Handles the state effect by mutating the state.
+def mutable(state, f) 
+    handle (f()) (effect) match (effect) {
+        Get() mutable(state, () resume(state))
+        Set(newState) mutable(newState, () resume({}))
+    }
