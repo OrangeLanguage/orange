@@ -2,6 +2,8 @@
 
 The Orange programming language compiler.
 
+[![Run on Repl.it](https://repl.it/badge/github/OrangeLanguage/orange)](https://repl.it/github/OrangeLanguage/orange)
+
 ## Getting Started
 
 ### Install Dependencies
