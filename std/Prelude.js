@@ -9,18 +9,18 @@ class _Bool extends _Any {
         this.value = value;
     }
 
-    _if(t, f) { 
+    _if(t, f, _cont) { 
         if (this.value) {
-            return t();
+            return _cont()(() => t());
         } else {
-            return f();
+            return _cont()(() => f());
         }
     }
 
-    toString() { return new _String(this.value.toString()); }
+    toString(_cont) { return _cont()(() => new _String(this.value.toString())); }
 
-    and(x) { return new _Bool(this.value && x().value) }
-    or(x) { return new _Bool(this.value || x().value) }
+    and(x, _cont) { return _cont()(() => new _Bool(this.value && x().value)); }
+    or(x, _cont) { return _cont()(() => new _Bool(this.value || x().value)); }
 }
 
 const _true = new _Bool(true);
@@ -32,21 +32,21 @@ class _Int extends _Any {
         this.value = value;
     }
 
-    toString() { return new _String(this.value.toString()); }
+    toString(_cont) { return _cont()(() => new _String(this.value.toString())); }
 
-    add(x) { return new _Int(this.value + x().value); }
-    sub(x) { return new _Int(this.value - x().value); }
-    mul(x) { return new _Int(this.value * x().value); }
-    div(x) { return new _Int(this.value / x().value); }
-    rem(x) { return new _Int(this.value % x().value); }
-    pow(x) { return new _Int(this.value ** x().value); }
+    add(x, _cont) { return _cont()(() => new _Int(this.value + x().value)); }
+    sub(x, _cont) { return _cont()(() => new _Int(this.value - x().value)); }
+    mul(x, _cont) { return _cont()(() => new _Int(this.value * x().value)); }
+    div(x, _cont) { return _cont()(() => new _Int(this.value / x().value)); }
+    rem(x, _cont) { return _cont()(() => new _Int(this.value % x().value)); }
+    pow(x, _cont) { return _cont()(() => new _Int(this.value ** x().value)); }
 
-    lt(x) { return new _Bool(this.value < x().value); }
-    gt(x) { return new _Bool(this.value > x().value); }
-    eq(x) { return new _Bool(this.value == x().value); }
-    leq(x) { return new _Bool(this.value <= x().value); }
-    geq(x) { return new _Bool(this.value >= x().value); }
-    neq(x) { return new _Bool(this.value != x().value); }
+    lt(x, _cont) { return _cont()(() => new _Bool(this.value < x().value)); }
+    gt(x, _cont) { return _cont()(() => new _Bool(this.value > x().value)); }
+    eq(x, _cont) { return _cont()(() => new _Bool(this.value == x().value)); }
+    leq(x, _cont) { return _cont()(() => new _Bool(this.value <= x().value)); }
+    geq(x, _cont) { return _cont()(() => new _Bool(this.value >= x().value)); }
+    neq(x, _cont) { return _cont()(() => new _Bool(this.value != x().value)); }
 }
 
 class _Char extends _Any {
@@ -55,7 +55,7 @@ class _Char extends _Any {
         this.value = value;
     }
 
-    toString() { return new _String(this.value.toString()); }
+    toString(_cont) { return _cont()(() => new _String(this.value.toString())); }
 }
 
 class _String extends _Any {
@@ -64,11 +64,11 @@ class _String extends _Any {
         this.value = value;
     }
 
-    toString() { return this; }
-    add(x) { return new _String(this.value + x().value); }
+    toString(_cont) { return _cont()(() => this); }
+    add(x, _cont) { return _cont()(() => new _String(this.value + x().value)); }
 }
 
-const log = (line) => {
-    console.log(line().toString().value);
-    return _unit;
+const log = (line, _cont) => {
+    console.log(line().toString(() => x => x().value));
+    return _cont()(() => _unit);
 }

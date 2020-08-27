@@ -1,12 +1,17 @@
 exports.evalString = function (s) {
     return function () {
         try {
-            return eval(s).toString().value;
+            const e = eval(s);
+            if (e) {
+                return e.toString(() => x => x().value);
+            } else {
+                return "undefined";
+            }
         } catch (e) {
             if (e.effect) {
-                console.log("Unhandled effect", e.effect.toString().value);
+                return "Unhandled effect " + e.effect.toString(() => x => x().value);
             } else {
-                console.log(e);
+                return e.toString();
             }
         }
     }

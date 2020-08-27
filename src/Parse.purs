@@ -223,7 +223,11 @@ parseMatch :: Parser Expr
 parseMatch = do
   void $ string "match"
   ignored
-  expr <- parseAtomic unit
+  void $ char '('
+  ignored
+  expr <- parseExpr unit
+  void $ char ')'
+  ignored
   void $ char '{'
   ignored
   patterns <- many parsePattern

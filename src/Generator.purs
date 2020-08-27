@@ -119,7 +119,9 @@ generateDoc (HandleIr ir cont) = do
     txt "(() => { try {" <>
     nest 2 (
       line <>
-      irDoc) <>
+      txt "return " <>
+      irDoc <>
+      txt ";") <>
     line <>
     txt "} catch (_e) {" <>
     nest 2 (
@@ -128,7 +130,7 @@ generateDoc (HandleIr ir cont) = do
       line <>
       txt "return " <>
       contDoc <>
-      txt "(() => _e.effect);") <>
+      txt "(() => _e.effect, () => x => x());") <>
     line <>
     txt "}})()"
 generateDoc (DefIr name ir) = do
@@ -176,12 +178,12 @@ generateDoc (ClassIr name args) = do
   tell $
     txt "_Any.prototype.as" <>
     txt (escape name) <>
-    txt " = function (f, cont) {" <> 
+    txt " = function (f, cont, _cont) {" <> 
     nest 2 (
       line <>
       txt "f = f();" <>
       line <>
-      txt "return cont()") <>
+      txt "return _cont()(() => cont())") <>
     line <>
     txt "};" <>
     line
@@ -190,14 +192,14 @@ generateDoc (ClassIr name args) = do
     txt (escape name) <> 
     txt ".prototype.as" <>
     txt (escape name) <> 
-    txt " = function (f, cont) {" <>
+    txt " = function (f, cont, _cont) {" <>
     nest 2 (
       line <>
       txt "f = f();" <>
       line <>
       txt "return f(" <>
-      intercalate (txt ", ") (map (\n -> txt "() => this." <> txt n) args) <>
-      txt ")") <>
+      fold (map (\n -> txt "() => this." <> txt n <> txt ", ") args) <>
+      txt "_cont)") <>
     line <>
     txt "};" <>
     line
@@ -205,12 +207,12 @@ generateDoc (ClassIr name args) = do
     txt "function " <>
     txt (escape name) <>
     txt "(" <>
-    intercalate (txt ", ") (map txt args) <> 
-    txt ") { return new _" <> 
+    fold (map (\x -> txt (escape x) <> txt ", ") args) <> 
+    txt "_cont) { return _cont()(() => new _" <> 
     txt (escape name) <>
     txt "(" <>
     intercalate (txt ", ") (map (\n -> txt n <> txt "()") args) <>
-    txt "); };" <>
+    txt ")); };" <>
     line
   pure $ txt (escape name)
 

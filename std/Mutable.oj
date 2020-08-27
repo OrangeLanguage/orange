@@ -2,7 +2,11 @@ class Get()
 class Set(state)
 
 def mutable(state, f) 
-    handle (f()) (effect) match effect {
+    handle (f()) (effect) match (effect) {
         Get() mutable(state, () resume(state))
         Set(newState) mutable(newState, () resume({}))
     }
+
+def get() do Get()
+def set(state) do Set(state)
+def modify(f) set(f(get()))
