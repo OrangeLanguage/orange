@@ -1,5 +1,3 @@
-const _handle = (x) => { console.log(`Unhandled effect ${x}`); }
-
 class _Any {}
 
 const _unit = new _Any();
@@ -11,7 +9,7 @@ class _Bool extends _Any {
         this.value = value;
     }
 
-    _if(_handle, t, f) { 
+    _if(t, f) { 
         if (this.value) {
             return t();
         } else {
@@ -19,10 +17,10 @@ class _Bool extends _Any {
         }
     }
 
-    toString(_handle) { return new _String(this.value.toString()); }
+    toString() { return new _String(this.value.toString()); }
 
-    and(_handle, x) { return new _Bool(this.value && x().value) }
-    or(_handle, x) { return new _Bool(this.value || x().value) }
+    and(x) { return new _Bool(this.value && x().value) }
+    or(x) { return new _Bool(this.value || x().value) }
 }
 
 const _true = new _Bool(true);
@@ -34,21 +32,21 @@ class _Int extends _Any {
         this.value = value;
     }
 
-    toString(_handle) { return new _String(this.value.toString()); }
+    toString() { return new _String(this.value.toString()); }
 
-    add(_handle, x) { return new _Int(this.value + x().value); }
-    sub(_handle, x) { return new _Int(this.value - x().value); }
-    mul(_handle, x) { return new _Int(this.value * x().value); }
-    div(_handle, x) { return new _Int(this.value / x().value); }
-    rem(_handle, x) { return new _Int(this.value % x().value); }
-    pow(_handle, x) { return new _Int(this.value ** x().value); }
+    add(x) { return new _Int(this.value + x().value); }
+    sub(x) { return new _Int(this.value - x().value); }
+    mul(x) { return new _Int(this.value * x().value); }
+    div(x) { return new _Int(this.value / x().value); }
+    rem(x) { return new _Int(this.value % x().value); }
+    pow(x) { return new _Int(this.value ** x().value); }
 
-    lt(_handle, x) { return new _Bool(this.value < x().value); }
-    gt(_handle, x) { return new _Bool(this.value > x().value); }
-    eq(_handle, x) { return new _Bool(this.value == x().value); }
-    leq(_handle, x) { return new _Bool(this.value <= x().value); }
-    geq(_handle, x) { return new _Bool(this.value >= x().value); }
-    neq(_handle, x) { return new _Bool(this.value != x().value); }
+    lt(x) { return new _Bool(this.value < x().value); }
+    gt(x) { return new _Bool(this.value > x().value); }
+    eq(x) { return new _Bool(this.value == x().value); }
+    leq(x) { return new _Bool(this.value <= x().value); }
+    geq(x) { return new _Bool(this.value >= x().value); }
+    neq(x) { return new _Bool(this.value != x().value); }
 }
 
 class _Char extends _Any {
@@ -57,7 +55,7 @@ class _Char extends _Any {
         this.value = value;
     }
 
-    toString(_handle) { return new _String(this.value.toString()); }
+    toString() { return new _String(this.value.toString()); }
 }
 
 class _String extends _Any {
@@ -66,11 +64,11 @@ class _String extends _Any {
         this.value = value;
     }
 
-    toString(_handle) { return this; }
-    add(_handle, x) { return new _String(this.value + x().value); }
+    toString() { return this; }
+    add(x) { return new _String(this.value + x().value); }
 }
 
-const log = (_handle, line) => {
-    console.log(line().toString(_handle).value);
+const log = (line) => {
+    console.log(line().toString().value);
     return _unit;
 }

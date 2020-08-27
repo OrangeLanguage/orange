@@ -1,0 +1,8 @@
+class Get()
+class Set(state)
+
+def mutable(state, f) 
+    handle (f()) (effect) match effect {
+        Get() mutable(state, () resume(state))
+        Set(newState) mutable(newState, () resume({}))
+    }

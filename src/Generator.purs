@@ -5,7 +5,7 @@ import Prelude
 import Control.Monad.Writer (Writer, runWriter, tell)
 import Data.Array (elem)
 import Data.BigInt (toString)
-import Data.List (fold, init, intercalate, last, (:))
+import Data.List (fold, init, intercalate, last)
 import Data.Maybe (maybe)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
@@ -66,7 +66,7 @@ generateDoc (ApplyIr ir args) = do
   pure $ 
     irDoc <> 
     txt "(" <> 
-    intercalate (txt ", ") (txt "_handle" : argsDoc) <> 
+    intercalate (txt ", ") argsDoc <> 
     txt ")"
 generateDoc (BlockIr irs) = 
   let (Tuple irDocs docs) = runWriter $ traverse generateDoc irs
@@ -85,7 +85,7 @@ generateDoc (LambdaIr args ir) = do
   irDoc <- generateDoc ir
   pure $ 
     txt "(function (" <> 
-    intercalate (txt ", ") (txt "_handle" : map (\(Arg eval name) -> txt (escape name)) args) <> 
+    intercalate (txt ", ") (map (\(Arg eval name) -> txt (escape name)) args) <> 
     txt ") {" <>
     nest 2 (
       line <>
@@ -99,33 +99,38 @@ generateDoc (DoIr ir name cont) = do
   irDoc <- generateDoc ir
   contDoc <- generateDoc cont
   pure $ 
-    txt "_handle(() => " <>
+    txt "(() => { throw {effect: " <>
     irDoc <>
-    txt ", (_handle, " <>
-    txt (escape name) <>
+    txt ", resume: (" <> 
+    txt name <>
     txt ") => {" <>
     nest 2 (
       line <>
-      txt (escape name) <>
-      txt " = " <>
-      txt (escape name) <>
-      txt "();" <>
-      line <>
+      argDoc (Arg EagerEval name) <>
       txt "return " <>
       contDoc <>
       txt ";") <>
     line <>
-    txt "})"
+    txt "}}})()"
 generateDoc (HandleIr ir cont) = do
   irDoc <- generateDoc ir
   contDoc <- generateDoc cont
   pure $ 
-    txt "((_handle) => " <>
-    irDoc <>
-    txt ")((_do, resume) => " <>
-    contDoc <>
-    txt "(_handle, _do)" <>
-    txt ")"
+    txt "(() => { try {" <>
+    nest 2 (
+      line <>
+      irDoc) <>
+    line <>
+    txt "} catch (_e) {" <>
+    nest 2 (
+      line <>
+      txt "const resume = _e.resume;" <>
+      line <>
+      txt "return " <>
+      contDoc <>
+      txt "(() => _e.effect);") <>
+    line <>
+    txt "}})()"
 generateDoc (DefIr name ir) = do
   irDoc <- generateDoc ir
   tell $
@@ -171,12 +176,12 @@ generateDoc (ClassIr name args) = do
   tell $
     txt "_Any.prototype.as" <>
     txt (escape name) <>
-    txt " = function (_handle, f, cont) {" <> 
+    txt " = function (f, cont) {" <> 
     nest 2 (
       line <>
       txt "f = f();" <>
       line <>
-      txt "return cont(_handle)") <>
+      txt "return cont()") <>
     line <>
     txt "};" <>
     line
@@ -185,12 +190,12 @@ generateDoc (ClassIr name args) = do
     txt (escape name) <> 
     txt ".prototype.as" <>
     txt (escape name) <> 
-    txt " = function (_handle, f, cont) {" <>
+    txt " = function (f, cont) {" <>
     nest 2 (
       line <>
       txt "f = f();" <>
       line <>
-      txt "return f(_handle, " <>
+      txt "return f(" <>
       intercalate (txt ", ") (map (\n -> txt "() => this." <> txt n) args) <>
       txt ")") <>
     line <>
@@ -200,7 +205,7 @@ generateDoc (ClassIr name args) = do
     txt "function " <>
     txt (escape name) <>
     txt "(" <>
-    intercalate (txt ", ") (txt "_handle" : map txt args) <> 
+    intercalate (txt ", ") (map txt args) <> 
     txt ") { return new _" <> 
     txt (escape name) <>
     txt "(" <>

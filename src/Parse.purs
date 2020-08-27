@@ -200,7 +200,11 @@ parseHandle :: Parser Expr
 parseHandle = do
   void $ string "handle"
   ignored
-  expr <- parseAtomic unit
+  void $ char '('
+  ignored
+  expr <- parseExpr unit
+  void $ char ')'
+  ignored
   cont <- parseExpr unit
   pure $ HandleExpr expr cont
 
@@ -224,6 +228,7 @@ parseMatch = do
   ignored
   patterns <- many parsePattern
   void $ char '}'
+  ignored
   pure $ MatchExpr expr patterns
 
 parseDef :: Parser Expr
