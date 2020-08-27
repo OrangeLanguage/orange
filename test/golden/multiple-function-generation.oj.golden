@@ -1,14 +1,16 @@
 (() => {
-  const const = (function (_handle, x, y) {
+  const _const = (function (x, y, _cont) {
     x = x();
     y = y();
-    return x;
+    _cont = _cont();
+    return _cont(() => x);
   });
-  const tsnoc = (function (_handle, x, y) {
+  const tsnoc = (function (x, y, _cont) {
     x = x();
     y = y();
-    return y;
+    _cont = _cont();
+    return _cont(() => y);
   });
-  const;
+  _const;
   return tsnoc;
 })()

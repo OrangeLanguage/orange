@@ -7,16 +7,15 @@ import Control.Monad.Except (class MonadTrans, ExceptT(..), mapExceptT, runExcep
 import Control.Monad.State (class MonadState, StateT(..), evalStateT, execStateT, get, mapStateT, modify, put)
 import Data.BigInt (BigInt)
 import Data.Either (Either(..))
-import Data.Foldable (foldr)
 import Data.Identity (Identity)
-import Data.List (List(..), (:))
+import Data.List (List(..), singleton, (:))
 import Data.Map (Map, insert, lookup)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..), snd)
+import Data.Tuple (Tuple(..))
 import Effect.Class (class MonadEffect)
-import Types (Assoc(..), Expr(..), Ir(..), Op(..))
+import Types (Arg(..), Assoc(..), Eval(..), Expr(..), Ir(..), Op(..), Pattern(..))
 
 newtype CompilerT m a = CompilerT (StateT Env (ExceptT String m) a)
 type Compiler a = CompilerT Identity a
@@ -50,40 +49,36 @@ evalCompilerT compiler env = runExceptT $ evalStateT (unwrap compiler) env
 evalCompiler :: forall a. Compiler a -> Env -> Either String a
 evalCompiler compiler env = unwrap $ evalCompilerT compiler env
 
-data Env = Env Int (Map String Unit) (Map String Op)
-
-insertDef :: String -> Env -> Env
-insertDef name (Env i defs ops) = Env i (insert name unit defs) ops
+data Env = Env Int (Map String Op)
 
 insertOp :: Assoc -> String -> BigInt -> Expr -> Env -> Env
-insertOp assoc name prec expr (Env i defs ops) = Env i defs (insert name (Op assoc prec expr) ops)
-
-lookupDef :: String -> Env -> Maybe Unit
-lookupDef name (Env i defs ops) = lookup name defs
+insertOp assoc name prec expr (Env i ops) = Env i (insert name (Op assoc prec expr) ops)
 
 lookupOp :: String -> Env -> Maybe Op
-lookupOp name (Env i defs ops) = lookup name ops
+lookupOp name (Env i ops) = lookup name ops
 
 fresh :: forall m. Monad m => CompilerT m String
 fresh = do
-  (Env i defs ops) <- get
-  put $ Env (i + 1) defs ops
+  (Env i ops) <- get
+  put $ Env (i + 1) ops
   pure $ "_" <> show i
 
 compile :: forall m. Monad m => Expr -> CompilerT m Ir
 compile expr = compileCont expr pure 
 
 compileCont :: forall m. Monad m => Expr -> (Ir -> CompilerT m Ir) -> CompilerT m Ir
+compileCont (BoolExpr int) f = f $ BoolIr int
 compileCont (IntExpr int) f = f $ IntIr int
 compileCont (CharExpr char) f = f $ CharIr char
 compileCont (StringExpr string) f = f $ StringIr string
-compileCont (IdentExpr name) f = do
-  env <- get
-  case lookupDef name env of
-    Nothing -> throwError $ "Undefined " <> name
-    Just unit -> f $ IdentIr name
+compileCont (IdentExpr name) f = f $ IdentIr name
 compileCont (DotExpr expr name) f = compileCont expr \ir -> f $ DotIr ir name
-compileCont (ApplyExpr fun args) f = compileCont fun \funIr -> compileConts args \argsIr -> f $ ApplyIr funIr argsIr
+compileCont (ApplyExpr fun args) f = 
+  compileCont fun \funIr -> 
+    compileConts args \argsIr -> do
+      name <- fresh
+      cont <- f $ IdentIr name 
+      pure $ ApplyIr funIr (argsIr <> singleton (LambdaIr (singleton (Arg EagerEval name)) cont))
 compileCont (OpExpr expr operators) f = do
   env <- get
   ops <- traverse (\(Tuple name e) -> case lookupOp name env of
@@ -95,46 +90,39 @@ compileCont (BlockExpr (expr : Nil)) f = compileCont expr f
 compileCont (BlockExpr exprs) f = compileConts exprs \irs -> f $ BlockIr irs
 compileCont (LambdaExpr args expr) f = do
   env <- get
-  put $ foldr insertDef env $ map snd args
-  exprIr <- compile expr
+  exprIr <- compileCont expr (\x -> pure $ ApplyIr (IdentIr "_cont") (x : Nil))
   put env
-  f $ LambdaIr args exprIr
+  f $ LambdaIr (args <> singleton (Arg EagerEval "_cont")) exprIr
 compileCont (DoExpr expr) f = do
   name <- fresh
   cont <- f $ IdentIr name
   compileCont expr (\ir -> pure $ DoIr ir name cont)
 compileCont (HandleExpr expr cont) f = do
   ir <- compile expr
-  env <- get
-  void $ modify $ insertDef "resume"
   contIr <- compile cont
   f $ HandleIr ir contIr
+compileCont (MatchExpr expr patterns) f = compileCont (desugarMatch expr patterns) f
 compileCont (DefExpr Nothing name expr) f = do
-  void $ modify $ insertDef name
   ir <- compile expr
   f $ DefIr name ir
 compileCont (DefExpr (Just clazz) name expr) f = do
-  void $ modify $ insertDef "this"
-  env <- get
-  case lookupDef clazz env of
-    Nothing -> throwError $ "Undefined " <> clazz
-    Just unit -> do 
-      ir <- compile expr
-      f $ ExtendIr clazz name ir
+  ir <- compile expr
+  f $ ExtendIr clazz name ir
 compileCont (InfixExpr assoc name prec expr) f = do
   void $ modify $ insertOp assoc name prec expr
   compileCont expr f
-compileCont (ClassExpr name args) f = do
-  void $ modify $ insertDef name
-  f $ ClassIr name args
-compileCont (WithExpr name) f = f $ WithIr name
-compileCont (ExternExpr name) f = do
-  void $ modify $ insertDef name
-  f $ IdentIr name
+compileCont (ClassExpr name args) f = f $ClassIr name args
 
 compileConts :: forall m. Monad m => List Expr -> (List Ir -> CompilerT m Ir) -> CompilerT m Ir
 compileConts Nil f = f Nil
 compileConts (car : cdr) f = compileCont car \carC -> compileConts cdr \cdrC -> f (carC : cdrC)
+
+desugarMatch :: Expr -> List Pattern -> Expr
+desugarMatch expr Nil = IdentExpr "undefined"
+desugarMatch expr ((Pattern name args cas) : patterns) =
+  let dot = DotExpr expr ("as" <> name)
+      lambda = LambdaExpr args cas
+  in ApplyExpr dot (lambda : desugarMatch expr patterns : Nil)
 
 applyOps :: forall m. (MonadError String m) => List (Tuple Op Expr) -> List Op -> List Expr -> m Expr
 applyOps Nil Nil (expr : Nil) = pure expr

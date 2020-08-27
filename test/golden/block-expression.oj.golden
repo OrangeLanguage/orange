@@ -1,1 +1,1 @@
-const one = (() => {const a = (1);a;return a;})();one
+const one = (() => {const a = new _Int(1);a;return a;})();one

@@ -1,1 +1,7 @@
-else(_handle, () => (1))
+_else(() => new _Int(1), () => (function (_0) {
+  _0 = _0();
+  return (() => {
+    extern;
+    return _0;
+  })();
+}))

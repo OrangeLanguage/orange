@@ -1,8 +1,16 @@
 function _Point(x, y) {
-  this.x = { ...x, set: (_handle, x) => ({ ...this, x}) };
-  this.y = { ...y, set: (_handle, y) => ({ ...this, y}) };
-  this.dot = (_f) => ({ ..._f(this), dot: (_g) => this.dot((_o) => _g(_f(_o))) });
+  this.x = x;
+  this.y = y;
 };
-function Point(_handle, x, y) { return new _Point(x, y); };
+_Point.prototype = Object.create(_Any.prototype);
+_Any.prototype.asPoint = function (f, cont, _cont) {
+  f = f();
+  return _cont()(() => cont())
+};
+_Point.prototype.asPoint = function (f, cont, _cont) {
+  f = f();
+  return f(() => this.x, () => this.y, _cont)
+};
+function Point(x, y, _cont) { return _cont()(() => new _Point(x(), y())); };
 const point = Point;
 point

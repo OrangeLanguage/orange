@@ -11,9 +11,12 @@ data Assoc = LeftAssoc | RightAssoc
 data Eval = EagerEval | LazyEval
 
 data Op = Op Assoc BigInt Expr
+data Arg = Arg Eval String
+data Pattern = Pattern String (List Arg) Expr
 
 data Expr
-  = IntExpr BigInt
+  = BoolExpr Boolean
+  | IntExpr BigInt
   | CharExpr Char
   | StringExpr String
   | IdentExpr String
@@ -21,29 +24,28 @@ data Expr
   | ApplyExpr Expr (List Expr)
   | OpExpr Expr (List (Tuple String Expr))
   | BlockExpr (List Expr)
-  | LambdaExpr (List (Tuple Eval String)) Expr
+  | LambdaExpr (List Arg) Expr
   | DoExpr Expr
   | HandleExpr Expr Expr
+  | MatchExpr Expr (List Pattern)
   | DefExpr (Maybe String) String Expr
   | InfixExpr Assoc String BigInt Expr
   | ClassExpr String (List String)
-  | WithExpr String
-  | ExternExpr String
 
 data Ir
-  = IntIr BigInt
+  = BoolIr Boolean
+  | IntIr BigInt
   | CharIr Char
   | StringIr String
   | IdentIr String
   | DotIr Ir String
   | ApplyIr Ir (List Ir)
   | BlockIr (List Ir)
-  | LambdaIr (List (Tuple Eval String)) Ir
+  | LambdaIr (List Arg) Ir
   | DoIr Ir String Ir
   | HandleIr Ir Ir
   | DefIr String Ir
   | ExtendIr String String Ir
   | ClassIr String (List String)
-  | WithIr String
 
 derive instance eqAssoc :: Eq Assoc

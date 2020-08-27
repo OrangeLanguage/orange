@@ -23,7 +23,6 @@ main = Golden.runSuite [
   generatorTest "lazy identity" "test/golden/lazy-identity.oj",
   generatorTest "basic with" "test/golden/basic-with.oj",
   generatorTest "basic trailing block" "test/golden/basic-trailing-block.oj",
-  generatorTest "lens composition" "test/golden/lens-composition.oj",
   generatorTest "basic extension" "test/golden/basic-extension.oj",
   generatorTest "multiple functions" "test/golden/multiple-function-generation.oj"
 ]
@@ -32,6 +31,6 @@ generatorTest :: String -> FilePath -> Golden.Test
 generatorTest name path = Golden.basic name path \input -> do
   let parseResult = runParser input parseProgram
   exprs <- either (\e -> throw $ show e) pure parseResult
-  let compileResult = evalCompiler (compile $ BlockExpr exprs) (Env 0 mempty mempty)
+  let compileResult = evalCompiler (compile $ BlockExpr exprs) (Env 0 mempty)
   ir <- either (\e -> throw e) pure compileResult
   pure $ generate 80 ir

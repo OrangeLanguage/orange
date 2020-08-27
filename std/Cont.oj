@@ -1,0 +1,16 @@
+// The CC effect provides generic continuations by using resume as a first class
+// function. This allows the function inside runCC to reify and manipulate 
+// continuations, which can be used to implement arbitrary control flow.
+class CC()
+
+def cc() do CC()
+
+// Applies a function to the current continuation. Equivalent to Scheme's 
+// call/cc.
+def callCC(f) f(cc())
+
+// Handles the CC effect by resuming with the resume function.
+def runCC(f)
+    handle (f()) (effect) match (effect) {
+        CC() resume(resume)
+    }

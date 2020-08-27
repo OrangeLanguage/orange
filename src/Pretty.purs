@@ -6,9 +6,9 @@ import Data.BigInt (BigInt, toString)
 import Data.Foldable (intercalate)
 import Data.List (fold)
 import Data.Maybe (maybe)
-import Data.Tuple (Tuple(..), uncurry)
+import Data.Tuple (Tuple(..))
 import Prettier.Printer (DOC, group, line, nest, nil, pretty, text, txt)
-import Types (Assoc(..), Eval(..), Expr(..), Ir(..))
+import Types (Arg(..), Assoc(..), Eval(..), Expr(..), Ir(..), Pattern(..))
 
 assocDoc :: Assoc -> DOC  
 assocDoc LeftAssoc = text "blue" "left "
@@ -21,10 +21,20 @@ evalDoc LazyEval = text "blue" "lazy "
 intDoc :: BigInt -> DOC
 intDoc int = text "cyan" $ toString int
 
-argDoc :: Eval -> String -> DOC
-argDoc eval name = evalDoc eval <> txt name
+argDoc :: Arg -> DOC
+argDoc (Arg eval name) = evalDoc eval <> txt name
+
+patternDoc :: Pattern -> DOC
+patternDoc (Pattern name args expr) =
+  line <>
+  txt name <>
+  txt "(" <>
+  intercalate (txt ", ") (map argDoc args) <>
+  txt ") " <>
+  exprDoc expr
 
 exprDoc :: Expr -> DOC
+exprDoc (BoolExpr bool) = if bool then text "blue" "true" else text "blue" "false"
 exprDoc (IntExpr int) = intDoc int
 exprDoc (CharExpr char) = text "green" $ show char
 exprDoc (StringExpr string) = text "green" $ show string
@@ -47,7 +57,7 @@ exprDoc (BlockExpr exprs) =
   txt "}"
 exprDoc (LambdaExpr args expr) = 
   txt "\\" <> 
-  group (nest 2 $ intercalate (txt ", ") (map (uncurry argDoc) args)) <> 
+  group (nest 2 $ intercalate (txt ", ") (map argDoc args)) <> 
   txt " -> " <> 
   group (nest 2 $ line <> exprDoc expr)
 exprDoc (DoExpr expr) = 
@@ -59,6 +69,10 @@ exprDoc (HandleExpr expr cont) =
   text "blue" " with " <> 
   line <> 
   exprDoc cont
+exprDoc (MatchExpr expr patterns) = 
+  text "blue" "match " <>
+  exprDoc expr <>
+  group (nest 2 $ fold (map patternDoc patterns))
 exprDoc (DefExpr clazz name expr) = 
   text "blue" "def " <> 
   maybe nil txt clazz <>
@@ -77,17 +91,12 @@ exprDoc (ClassExpr name args) =
   txt "(" <>
   intercalate (txt ", ") (map txt args) <> 
   txt ")"
-exprDoc (WithExpr name) =
-  text "blue" "with " <>
-  txt name
-exprDoc (ExternExpr name) = 
-  text "blue" "extern " <> 
-  txt name
 
 showExpr :: Int -> Expr -> String
 showExpr width expr = pretty width $ group $ exprDoc expr
 
 irDoc :: Ir -> DOC
+irDoc (BoolIr bool) = if bool then text "blue" "true" else text "blue" "false"
 irDoc (IntIr int) = intDoc int
 irDoc (CharIr char) = text "green" $ show char
 irDoc (StringIr string) = text "green" $ show string
@@ -109,7 +118,7 @@ irDoc (BlockIr irs) =
   txt "}"
 irDoc (LambdaIr args ir) = 
   txt "\\" <> 
-  intercalate (txt ", ") (map (uncurry argDoc) args) <> 
+  intercalate (txt ", ") (map argDoc args) <> 
   txt " -> " <> 
   txt "(" <>
   group (nest 2 $ line <> irDoc ir) <>
@@ -153,9 +162,6 @@ irDoc (ClassIr name args) =
   txt "(" <>
   intercalate (txt ", ") (map txt args) <> 
   txt ")"
-irDoc (WithIr name) =
-  text "blue" "with " <>
-  txt name
 
 showIr :: Int -> Ir -> String
 showIr width ir = pretty width $ group $ irDoc ir

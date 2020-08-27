@@ -1,1 +1,1 @@
-(function (_handle, x) {return x;})
+(function (x, _cont) {_cont = _cont();return _cont(() => x);})

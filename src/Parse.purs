@@ -19,7 +19,7 @@ import Text.Parsing.Parser (Parser) as P
 import Text.Parsing.Parser.Combinators (option, sepBy, skipMany, try)
 import Text.Parsing.Parser.String (class StringLike, char, eof, noneOf, oneOf, string, null)
 import Text.Parsing.Parser.Token (digit, letter, space)
-import Types (Assoc(..), Eval(..), Expr(..))
+import Types (Arg(..), Assoc(..), Eval(..), Expr(..), Pattern(..))
 
 type Parser a = P.Parser String a
 data ParsingError = ParsingError String ParseError
@@ -37,13 +37,24 @@ incremental more incrementalParser = do
       else
         throwError e
 
+comment :: Parser Unit
+comment = do
+  void $ string "//" 
+  void $ many $ noneOf ['\r', '\n']
+
 ignored :: Parser Unit
-ignored = skipMany space
+ignored = skipMany (void space <|> comment)
 
 escape :: Parser Char
 escape = do
   void $ string "\\\""
   pure '"'
+
+parseBool :: Parser Boolean
+parseBool = do
+  bool <- (string "true" *> pure true) <|> (string "false" *> pure false)
+  ignored
+  pure bool
 
 parseInt :: Parser BigInt
 parseInt = do
@@ -88,20 +99,6 @@ parseClass = do
   ignored
   pure $ ClassExpr name args
 
-parseWith :: Parser Expr
-parseWith = do
-  void $ string "with"
-  ignored
-  name <- parseIdent
-  pure $ WithExpr name
-
-parseExtern :: Parser Expr
-parseExtern = do
-  void $ string "extern"
-  ignored
-  name <- parseIdent
-  pure $ ExternExpr name
-
 parseBlock :: Parser Expr
 parseBlock = do
   void $ char '{'
@@ -114,9 +111,8 @@ parseBlock = do
 parseAtomic :: Unit -> Parser Expr
 parseAtomic unit = 
   parseClass <|> 
-  parseExtern <|>
-  parseWith <|>
   parseBlock <|> 
+  BoolExpr <$> parseBool <|>
   IntExpr <$> parseInt <|> 
   CharExpr <$> parseChar <|> 
   StringExpr <$> parseString <|> 
@@ -177,11 +173,11 @@ parseOperators unit = do
 parseEval :: Parser Eval
 parseEval = option EagerEval (string "lazy" *> pure LazyEval) <* ignored
 
-parseArg :: Parser (Tuple Eval String)
+parseArg :: Parser Arg
 parseArg = do
   eval <- parseEval
   name <- parseIdent
-  pure $ Tuple eval name
+  pure $ Arg eval name
 
 parseLambda :: Parser Expr
 parseLambda = do
@@ -204,9 +200,40 @@ parseHandle :: Parser Expr
 parseHandle = do
   void $ string "handle"
   ignored
-  expr <- parseAtomic unit
+  void $ char '('
+  ignored
+  expr <- parseExpr unit
+  void $ char ')'
+  ignored
   cont <- parseExpr unit
   pure $ HandleExpr expr cont
+
+parsePattern :: Parser Pattern
+parsePattern = do
+  name <- parseIdent
+  void $ char '('
+  ignored
+  args <- sepBy parseArg (char ',' <* ignored)
+  void $ char ')'
+  ignored
+  expr <- parseExpr unit
+  pure $ Pattern name args expr
+
+parseMatch :: Parser Expr
+parseMatch = do
+  void $ string "match"
+  ignored
+  void $ char '('
+  ignored
+  expr <- parseExpr unit
+  void $ char ')'
+  ignored
+  void $ char '{'
+  ignored
+  patterns <- many parsePattern
+  void $ char '}'
+  ignored
+  pure $ MatchExpr expr patterns
 
 parseDef :: Parser Expr
 parseDef = do
@@ -232,7 +259,7 @@ parseInfix = do
   pure $ InfixExpr assoc op int expr
 
 parseExpr :: Unit -> Parser Expr
-parseExpr unit = parseDo <|> parseHandle <|> parseDef <|> parseInfix <|> parseOperators unit <|> parseLambda
+parseExpr unit = parseDo <|> parseHandle <|> parseMatch <|> parseDef <|> parseInfix <|> parseOperators unit <|> parseLambda
 
 parseProgram :: Parser (List Expr)
 parseProgram = do

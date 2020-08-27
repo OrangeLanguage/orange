@@ -1,1 +1,5 @@
-const f = (function (_handle) {return (1);});f
+const f = (function (_cont) {
+  _cont = _cont();
+  return _cont(() => new _Int(1));
+});
+f

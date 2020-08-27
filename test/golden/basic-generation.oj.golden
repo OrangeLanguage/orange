@@ -1,1 +1,1 @@
-const x = (8);x
+const x = new _Int(8);x

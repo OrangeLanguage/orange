@@ -1,1 +1,7 @@
-const const = (function (_handle, x, y) {x = x();y = y();return x;});const
+const _const = (function (x, y, _cont) {
+  x = x();
+  y = y();
+  _cont = _cont();
+  return _cont(() => x);
+});
+_const

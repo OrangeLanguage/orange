@@ -1,0 +1,12 @@
+def fizzBuzz(i) 
+    forEach(count(i)) { (x)
+        if (x % 3 == 0 && x % 5 == 0) {
+            log("FizzBuzz")
+        }.elif (x % 3 == 0) {
+            log("Fizz")
+        }.elif (x % 5 == 0) {
+            log("Buzz")
+        }.else {
+            log(x)
+        }
+    }
