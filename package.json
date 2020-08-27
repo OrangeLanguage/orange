@@ -1,6 +1,8 @@
 {
   "scripts": {
-    "repl": "spago run"
+    "repl": "spago run",
+    "replit": "spago bundle-app",
+    "start": "node index.js"
   },
   "dependencies": {
     "big-integer": "^1.6.48",
