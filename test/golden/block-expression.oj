@@ -1,4 +1,0 @@
-def one {
-    def a 1
-    a
-}

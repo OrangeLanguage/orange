@@ -1,1 +1,0 @@
-(function (x, _cont) {_cont = _cont();return _cont(() => x);})

@@ -16,16 +16,6 @@ import Types (Expr(..))
 
 main :: Effect Unit
 main = Golden.runSuite [
-  generatorTest "basic generation" "test/golden/basic-generation.oj",
-  generatorTest "function generation" "test/golden/function-generation.oj",
-  generatorTest "class expression" "test/golden/class-expression.oj",
-  generatorTest "block expression" "test/golden/block-expression.oj",
-  generatorTest "zero argument function syntax" "test/golden/zero-argument-function-syntax.oj",
-  generatorTest "lazy identity" "test/golden/lazy-identity.oj",
-  generatorTest "basic with" "test/golden/basic-with.oj",
-  generatorTest "basic trailing block" "test/golden/basic-trailing-block.oj",
-  generatorTest "basic extension" "test/golden/basic-extension.oj",
-  generatorTest "multiple functions" "test/golden/multiple-function-generation.oj"
 ]
 
 generatorTest :: String -> FilePath -> Golden.Test

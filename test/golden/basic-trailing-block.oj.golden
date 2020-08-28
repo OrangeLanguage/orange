@@ -1,7 +1,0 @@
-_else(() => new _Int(1n), () => (function (_0) {
-  _0 = _0();
-  return (() => {
-    extern;
-    return _0;
-  })();
-}))

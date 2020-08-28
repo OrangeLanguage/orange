@@ -1,1 +1,0 @@
-var f = (function (_cont) {_cont = _cont();return _cont(() => new _Int(1n));});f
