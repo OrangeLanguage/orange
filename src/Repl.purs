@@ -84,7 +84,7 @@ evalNodeRepl :: forall a. NodeRepl a -> Effect Unit
 evalNodeRepl nodeRepl = do
   interface <- createConsoleInterface noCompletion
   prelude <- readTextFile UTF8 "std/Prelude.js"
-  void $ runContT (runCompilerT (evalStateT (runExceptT $ runReaderT (unwrap nodeRepl) interface) [prelude]) (Env 0 mempty)) $ either throw (const $ pure unit)
+  void $ runContT (runCompilerT (evalStateT (runExceptT $ runReaderT (unwrap nodeRepl) interface) [prelude]) (Env 0 mempty)) $ either throw $ const $ pure unit
 
 query :: String -> NodeRepl String
 query prompt = do

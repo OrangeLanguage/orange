@@ -1,4 +1,4 @@
-exports.evalString = function (s) {
+exports.evalString = function evalString(s) {
     return function () {
         try {
             const e = eval(s);
