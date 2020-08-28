@@ -126,8 +126,8 @@ eval expr = do
   generated <- compileTopLevel expr
   maybe (pure unit) log generated 
 
-process :: String -> NodeRepl Unit
-process line = case uncons line of
+command :: String -> NodeRepl Unit
+command line = case uncons line of
   Just ({ head: ':', tail: tail }) -> do
     let (Tuple command expr) = break tail
     case command of
@@ -142,7 +142,7 @@ process line = case uncons line of
 repl ::  NodeRepl Unit
 repl = do
   userInput <- input
-  catchError (process userInput) handleError
+  catchError (command userInput) handleError
   repl
 
 break :: String -> Tuple String String

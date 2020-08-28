@@ -2,10 +2,10 @@ exports.evalString = function (s) {
     return function () {
         try {
             const e = eval(s);
-            if (e) {
+            if (e !== undefined && e !== null) {
                 return e.toString(() => x => x().value);
             } else {
-                return "undefined";
+                return String(e);
             }
         } catch (e) {
             if (e.effect) {

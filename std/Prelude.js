@@ -1,5 +1,7 @@
 class _Any {}
 
+const BigInt = require('big-integer');
+
 const _unit = new _Any();
 _unit.toString = () => "unit"
 
@@ -29,24 +31,24 @@ const _false = new _Bool(false);
 class _Int extends _Any {
     constructor(value) {
         super();
-        this.value = (value);
+        this.value = BigInt(value);
     }
 
     toString(_cont) { return _cont()(() => new _String(this.value.toString())); }
 
-    add(x, _cont) { return _cont()(() => new _Int(this.value + x().value)); }
-    sub(x, _cont) { return _cont()(() => new _Int(this.value - x().value)); }
-    mul(x, _cont) { return _cont()(() => new _Int(this.value * x().value)); }
-    div(x, _cont) { return _cont()(() => new _Int(this.value / x().value)); }
-    rem(x, _cont) { return _cont()(() => new _Int(this.value % x().value)); }
-    pow(x, _cont) { return _cont()(() => new _Int(this.value ** x().value)); }
+    add(x, _cont) { return _cont()(() => new _Int(this.value.add(x().value))); }
+    sub(x, _cont) { return _cont()(() => new _Int(this.value.subtract(x().value))); }
+    mul(x, _cont) { return _cont()(() => new _Int(this.value.multiply(x().value))); }
+    div(x, _cont) { return _cont()(() => new _Int(this.value.divide(x().value))); }
+    rem(x, _cont) { return _cont()(() => new _Int(this.value.mod(x().value))); }
+    pow(x, _cont) { return _cont()(() => new _Int(this.value.pow(x().value))); }
 
-    lt(x, _cont) { return _cont()(() => new _Bool(this.value < x().value)); }
-    gt(x, _cont) { return _cont()(() => new _Bool(this.value > x().value)); }
-    eq(x, _cont) { return _cont()(() => new _Bool(this.value == x().value)); }
-    leq(x, _cont) { return _cont()(() => new _Bool(this.value <= x().value)); }
-    geq(x, _cont) { return _cont()(() => new _Bool(this.value >= x().value)); }
-    neq(x, _cont) { return _cont()(() => new _Bool(this.value != x().value)); }
+    lt(x, _cont) { return _cont()(() => new _Bool(this.value.lesser(x().value))); }
+    gt(x, _cont) { return _cont()(() => new _Bool(this.value.greater(x().value))); }
+    eq(x, _cont) { return _cont()(() => new _Bool(this.value.equals(x().value))); }
+    leq(x, _cont) { return _cont()(() => new _Bool(this.value.lesserOrEquals(x().value))); }
+    geq(x, _cont) { return _cont()(() => new _Bool(this.value.greaterOrEquals(x().value))); }
+    neq(x, _cont) { return _cont()(() => new _Bool(this.value.notEquals(x().value))); }
 }
 
 class _Char extends _Any {

@@ -48,7 +48,7 @@ classArgDoc name =
 
 generateDoc :: Ir -> Writer DOC DOC
 generateDoc (BoolIr bool) = pure $ txt $ if bool then "_true" else "_false"
-generateDoc (IntIr int) = pure $ txt $ "new _Int(" <> toString int <> ")"
+generateDoc (IntIr int) = pure $ txt $ "new _Int(" <> toString int <> "n)"
 generateDoc (CharIr char) = pure $ txt $ "new _Char(" <> show char <> ")"
 generateDoc (StringIr string) = pure $ txt $ "new _String(" <> show string <> ")"
 generateDoc (IdentIr name) = pure $ txt (escape name)
