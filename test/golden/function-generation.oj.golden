@@ -1,4 +1,4 @@
-const _const = (function (x, y, _cont) {
+var _const = (function (x, y, _cont) {
   x = x();
   y = y();
   _cont = _cont();

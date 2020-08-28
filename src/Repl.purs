@@ -65,8 +65,9 @@ compileTopLevel expr = do
     evaluateResult generated = do
       prev <- get
       let newState = prev <> [generated]
-      put newState
-      liftEffect $ evalString $ intercalate ";\n" newState
+      result <- liftEffect $ try $ evalString $ intercalate ";\n" newState
+      either
+        (throwError <<< Native) (\succ -> put newState *> pure succ) result
 
 tryCompile :: String -> NodeRepl (Maybe Ir)
 tryCompile program = do
@@ -83,7 +84,7 @@ evalNodeRepl :: forall a. NodeRepl a -> Effect Unit
 evalNodeRepl nodeRepl = do
   interface <- createConsoleInterface noCompletion
   prelude <- readTextFile UTF8 "std/Prelude.js"
-  void $ runContT (runCompilerT (evalStateT (runExceptT $ runReaderT (unwrap nodeRepl) interface) [prelude]) (Env 0 mempty)) $ either throw (const $ pure unit)
+  void $ runContT (runCompilerT (evalStateT (runExceptT $ runReaderT (unwrap nodeRepl) interface) [prelude]) (Env 0 mempty)) $ either throw $ const $ pure unit
 
 query :: String -> NodeRepl String
 query prompt = do

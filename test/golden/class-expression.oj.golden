@@ -12,5 +12,5 @@ _Point.prototype.asPoint = function (f, cont, _cont) {
   return f(() => this.x, () => this.y, _cont)
 };
 function Point(x, y, _cont) { return _cont()(() => new _Point(x(), y())); };
-const point = Point;
+var point = Point;
 point

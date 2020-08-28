@@ -126,7 +126,7 @@ generateDoc (HandleIr ir cont) = do
     txt "} catch (_e) {" <>
     nest 2 (
       line <>
-      txt "const resume = _e.resume;" <>
+      txt "var resume = _e.resume;" <>
       line <>
       txt "return " <>
       contDoc <>
@@ -136,7 +136,7 @@ generateDoc (HandleIr ir cont) = do
 generateDoc (DefIr name ir) = do
   irDoc <- generateDoc ir
   tell $
-    txt "const " <>
+    txt "var " <>
     txt (escape name) <>
     txt " = " <>
     irDoc <>

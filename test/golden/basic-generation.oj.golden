@@ -1,1 +1,1 @@
-const x = new _Int(8n);x
+var x = new _Int(8n);x
