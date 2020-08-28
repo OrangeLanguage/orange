@@ -68,10 +68,6 @@ compileTopLevel expr = do
       put newState
       liftEffect $ evalString $ intercalate ";\n" newState
 
-tryEval :: String -> NodeRepl (Maybe String)
-tryEval source = do
-  pure $ Just ""
-
 tryCompile :: String -> NodeRepl (Maybe Ir)
 tryCompile program = do
   tree <- parse program
