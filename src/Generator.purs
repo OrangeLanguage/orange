@@ -10,7 +10,7 @@ import Data.Maybe (maybe)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
 import Prettier.Printer (DOC, group, line, nest, nil, pretty, txt)
-import Types (Arg(..), Eval(..), Ir(..))
+import Types (Ir(..))
 
 escape :: String -> String
 escape word = if elem word [
@@ -33,10 +33,6 @@ escape word = if elem word [
   then "_" <> word
   else word
 
-argDoc :: Arg -> DOC
-argDoc (Arg EagerEval name) = txt (escape name) <> txt " = " <> txt (escape name) <> txt "();" <> line
-argDoc (Arg LazyEval name) = nil
-
 classArgDoc :: String -> DOC
 classArgDoc name = 
   line <>
@@ -46,31 +42,31 @@ classArgDoc name =
   txt (escape name) <> 
   txt ";"
 
-generateDoc :: Ir -> Writer DOC DOC
-generateDoc (BoolIr bool) = pure $ txt $ if bool then "_true" else "_false"
-generateDoc (IntIr int) = pure $ txt $ "new _Int(" <> toString int <> "n)"
-generateDoc (CharIr char) = pure $ txt $ "new _Char(" <> show char <> ")"
-generateDoc (StringIr string) = pure $ txt $ "new _String(" <> show string <> ")"
-generateDoc (IdentIr name) = pure $ txt (escape name)
-generateDoc (DotIr ir name) = do
-  irDoc <- generateDoc ir
+generateDoc :: Boolean -> Ir -> Writer DOC DOC
+generateDoc _ (BoolIr bool) = pure $ txt $ if bool then "_true" else "_false"
+generateDoc _ (IntIr int) = pure $ txt $ "new _Int(" <> toString int <> "n)"
+generateDoc _ (CharIr char) = pure $ txt $ "new _Char(" <> show char <> ")"
+generateDoc _ (StringIr string) = pure $ txt $ "new _String(" <> show string <> ")"
+generateDoc _ (IdentIr name) = pure $ txt (escape name)
+generateDoc _ (DotIr ir name) = do
+  irDoc <- generateDoc false ir
   pure $ 
     txt "(" <> 
     irDoc <>
     txt "." <>
     txt (escape name) <>
     txt ")"
-generateDoc (ApplyIr ir args) = do
-  irDoc <- generateDoc ir
-  argsDoc <- traverse (\arg -> generateDoc arg <#> (<>) (txt "() => ")) args
+generateDoc _ (ApplyIr ir args) = do
+  irDoc <- generateDoc false ir
+  argsDoc <- traverse (generateDoc false) args
   pure $ 
     irDoc <> 
     txt "(" <> 
     intercalate (txt ", ") argsDoc <> 
     txt ")"
-generateDoc (BlockIr (ir : Nil)) = generateDoc ir
-generateDoc (BlockIr irs) = 
-  let (Tuple irDocs docs) = runWriter $ traverse generateDoc irs
+generateDoc captureThis (BlockIr (ir : Nil)) = generateDoc captureThis ir
+generateDoc captureThis (BlockIr irs) = 
+  let (Tuple irDocs docs) = runWriter $ traverse (generateDoc captureThis) irs
   in pure $ 
     txt "(() => {" <>
     nest 2 (
@@ -82,40 +78,46 @@ generateDoc (BlockIr irs) =
       txt ";") <>
     line <>
     txt "})()"
-generateDoc (LambdaIr args ir) = do
-  irDoc <- generateDoc ir
-  pure $ 
-    txt "(function (" <> 
-    intercalate (txt ", ") (map (\(Arg eval name) -> txt (escape name)) args) <> 
-    txt ") {" <>
-    nest 2 (
+generateDoc captureThis (LambdaIr args ir) = do
+  irDoc <- generateDoc false ir
+  pure $ if captureThis
+    then 
+      txt "(function (" <> 
+      intercalate (txt ", ") (map (escape >>> txt) args) <> 
+      txt ") {" <>
+      nest 2 (
+        line <>
+        txt "return " <> 
+        irDoc <>
+        txt ";") <>
       line <>
-      fold (map argDoc args) <>
-      txt "return " <> 
-      irDoc <>
-      txt ";") <>
-    line <>
-    txt "})"
-generateDoc (DoIr ir name cont) = do
-  irDoc <- generateDoc ir
-  contDoc <- generateDoc cont
+      txt "})"
+    else
+      txt "((" <> 
+      intercalate (txt ", ") (map (escape >>> txt) args) <> 
+      txt ") => " <>
+      nest 2 (
+        line <>
+        irDoc) <>
+      txt ")"
+generateDoc _ (DoIr ir name cont) = do
+  irDoc <- generateDoc false ir
+  contDoc <- generateDoc false cont
   pure $ 
     txt "(() => { throw {effect: " <>
     irDoc <>
     txt ", resume: (" <> 
     txt name <>
-    txt ") => {" <>
-    nest 2 (
-      line <>
-      argDoc (Arg EagerEval name) <>
-      txt "return " <>
-      contDoc <>
-      txt ";") <>
-    line <>
-    txt "}}})()"
-generateDoc (HandleIr ir cont) = do
-  irDoc <- generateDoc ir
-  contDoc <- generateDoc cont
+    txt ", __cont) => " <>
+    txt name <>
+    txt "(" <>
+    txt name <>
+    txt " => __cont(" <>
+    nest 2 contDoc <>
+    txt "))}})()"
+generateDoc _ (HandleIr ir cont) = do
+  irDoc <- generateDoc false ir
+  contDoc <- generateDoc false cont
   pure $ 
     txt "(() => { try {" <>
     nest 2 (
@@ -125,17 +127,14 @@ generateDoc (HandleIr ir cont) = do
       txt ";") <>
     line <>
     txt "} catch (_e) {" <>
-    nest 2 (
-      line <>
-      txt "var resume = _e.resume;" <>
-      line <>
+    nest 2 (line <> 
       txt "return " <>
       contDoc <>
-      txt "(() => _e.effect, () => x => x());") <>
+      txt ";") <>
     line <>
     txt "}})()"
-generateDoc (DefIr name ir) = do
-  irDoc <- generateDoc ir
+generateDoc _ (DefIr name ir) = do
+  irDoc <- generateDoc false ir
   tell $
     txt "var " <>
     txt (escape name) <>
@@ -144,8 +143,8 @@ generateDoc (DefIr name ir) = do
     txt ";" <> 
     line
   pure $ txt (escape name)
-generateDoc (ExtendIr clazz name ir) = do
-  irDoc <- generateDoc ir
+generateDoc _ (ExtendIr clazz name ir) = do
+  irDoc <- generateDoc true ir
   tell $
     txt "_" <>
     txt clazz <>
@@ -160,7 +159,7 @@ generateDoc (ExtendIr clazz name ir) = do
     txt clazz <>
     txt ".prototype." <>
     txt (escape name)
-generateDoc (ClassIr name args) = do
+generateDoc _ (ClassIr name args) = do
   tell $
     txt "function _" <>
     txt (escape name) <>
@@ -176,48 +175,10 @@ generateDoc (ClassIr name args) = do
     txt (escape name) <>
     txt ".prototype = Object.create(_Any.prototype);" <>
     line
-  tell $
-    txt "_Any.prototype.as" <>
-    txt (escape name) <>
-    txt " = function (f, cont, _cont) {" <> 
-    nest 2 (
-      line <>
-      txt "f = f();" <>
-      line <>
-      txt "return _cont()(() => cont())") <>
-    line <>
-    txt "};" <>
-    line
-  tell $
-    txt "_" <>
-    txt (escape name) <> 
-    txt ".prototype.as" <>
-    txt (escape name) <> 
-    txt " = function (f, cont, _cont) {" <>
-    nest 2 (
-      line <>
-      txt "f = f();" <>
-      line <>
-      txt "return f(" <>
-      fold (map (\n -> txt "() => this." <> txt n <> txt ", ") args) <>
-      txt "_cont)") <>
-    line <>
-    txt "};" <>
-    line
-  tell $
-    txt "function " <>
-    txt (escape name) <>
-    txt "(" <>
-    fold (map (\x -> txt (escape x) <> txt ", ") args) <> 
-    txt "_cont) { return _cont()(() => new _" <> 
-    txt (escape name) <>
-    txt "(" <>
-    intercalate (txt ", ") (map (\n -> txt n <> txt "()") args) <>
-    txt ")); };" <>
-    line
-  pure $ txt (escape name)
+  pure $ txt "_unit"
+generateDoc _ (ExternIr string) = pure $ txt string
 
 generate :: Int -> Ir -> String
 generate width ir = 
-  let (Tuple doc docs) = runWriter $ generateDoc ir
+  let (Tuple doc docs) = runWriter $ generateDoc false ir
   in pretty width $ group docs <> group doc

@@ -1,7 +1,9 @@
-def nil class Nil()()
-def cons class Cons(car, cdr)
+class Nil()
+def nil Nil()
 
-infix right 5 : cons
+class Cons(car, cdr)
+
+infix right 5 : Cons
 
 def listToString(list) match (list) {
     Nil() "nil"

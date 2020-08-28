@@ -7,7 +7,7 @@ import Control.Monad.Except (class MonadTrans, ExceptT(..), mapExceptT, runExcep
 import Control.Monad.State (class MonadState, StateT(..), evalStateT, execStateT, get, mapStateT, modify, put)
 import Data.BigInt (BigInt)
 import Data.Either (Either(..))
-import Data.List (List(..), singleton, (:))
+import Data.List (List(..), foldr, intercalate, singleton, (:))
 import Data.Map (Map, insert, lookup)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
@@ -76,10 +76,10 @@ compileCont (IdentExpr name) f = f $ IdentIr name
 compileCont (DotExpr expr name) f = compileCont expr \ir -> f $ DotIr ir name
 compileCont (ApplyExpr fun args) f = 
   compileCont fun \funIr -> 
-    compileConts args \argsIr -> do
+    compileConts (map (LambdaExpr Nil) args) \argsIr -> do
       name <- fresh
       cont <- f $ IdentIr name 
-      pure $ singleton $ ApplyIr funIr (argsIr <> singleton (LambdaIr (singleton (Arg EagerEval name)) (BlockIr cont)))
+      pure $ singleton $ ApplyIr funIr (argsIr <> singleton (LambdaIr (singleton name) (BlockIr cont)))
 compileCont (OpExpr expr operators) f = do
   env <- get
   ops <- traverse (\(Tuple name e) -> case lookupOp name env of
@@ -92,33 +92,55 @@ compileCont (BlockExpr exprs) f = compileConts exprs \irs -> f $ BlockIr irs
 compileCont (LambdaExpr args expr) f = do
   env <- get
   exprIr <- compileCont expr (\x -> pure $ singleton $ ApplyIr (IdentIr "_cont") (x : Nil))
+  let evalIr = foldr eval (BlockIr exprIr) args
   put env
-  f $ LambdaIr (args <> singleton (Arg EagerEval "_cont")) (BlockIr exprIr)
+  f $ LambdaIr (map (\(Arg _ name) -> name) args <> singleton "_cont") evalIr
+    where
+      eval :: Arg -> Ir -> Ir
+      eval (Arg EagerEval name) ir = ApplyIr (IdentIr name) (singleton (LambdaIr (singleton name) ir))
+      eval (Arg LazyEval name) ir = ir
 compileCont (DoExpr expr) f = do
   name <- fresh
   cont <- f $ IdentIr name
   compileCont expr (\ir -> pure $ singleton $ DoIr ir name (BlockIr cont))
 compileCont (HandleExpr expr cont) f = do
   ir <- compile expr
-  contIr <- compile cont
+  let resumeExpr = ApplyExpr (LambdaExpr (singleton $ Arg EagerEval "resume") cont) (singleton $ ExternExpr "_e.resume")
+  contIr <- compile $ ApplyExpr resumeExpr (singleton $ ExternExpr "_e.effect")
   f $ HandleIr (BlockIr ir) (BlockIr contIr)
 compileCont (MatchExpr expr patterns) f = compileCont (desugarMatch expr patterns) f
 compileCont (DefExpr Nothing name expr) f = do
-  ir <- compile expr
+  irs <- compile expr
   cont <- f $ IdentIr name
-  pure $ DefIr name (BlockIr ir) : cont
+  pure $ DefIr name (BlockIr irs) : cont
 compileCont (DefExpr (Just clazz) name expr) f = do
-  ir <- compile expr
-  f $ ExtendIr clazz name (BlockIr ir)
+  irs <- compile expr
+  f $ ExtendIr clazz name (BlockIr irs)
 compileCont (InfixExpr assoc name prec expr) f = do
   void $ modify $ insertOp assoc name prec expr
   compileCont expr f
-compileCont (ClassExpr name args) f = f $ ClassIr name args
+compileCont (ClassExpr name args) f = do 
+  let argNames = map (\(Arg _ n) -> n) args
+  constructor <- compile $ 
+    DefExpr Nothing name $ 
+      LambdaExpr args $ 
+        ExternExpr ("new _" <> name <> "(" <> intercalate ", " argNames <> ")")
+  matchAny <- compile $ 
+    DefExpr (Just "Any") ("as" <> name) $ 
+      LambdaExpr (Arg EagerEval "f" : Arg LazyEval "cont" : Nil) $
+        ApplyExpr (IdentExpr "cont") Nil
+  matchThis <- compile $
+    DefExpr (Just name) ("as" <> name) $
+      LambdaExpr (Arg EagerEval "f" : Arg LazyEval "cont" : Nil) $
+        ApplyExpr (IdentExpr "f") (map (\n -> DotExpr (IdentExpr "this") n) argNames)
+  cont <- f $ IdentIr name
+  pure $ singleton (ClassIr name argNames) <> matchAny <> matchThis <> constructor <> cont
 compileCont (ImportExpr name) f = do
   exprs <- importFile name
   irs <- traverse compile exprs
   last <- f $ IdentIr "_unit"
   pure $ (irs >>= identity) <> last
+compileCont (ExternExpr string) f = f $ ExternIr string
 
 compileConts :: forall m. Monad m => MonadEffect m => List Expr -> (List Ir -> CompilerT m (List Ir)) -> CompilerT m (List Ir)
 compileConts Nil f = f Nil

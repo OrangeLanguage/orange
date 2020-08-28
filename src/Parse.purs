@@ -94,7 +94,7 @@ parseClass = do
   name <- parseIdent
   void $ char '('
   ignored
-  args <- sepBy parseIdent (char ',' *> ignored)
+  args <- sepBy parseArg (char ',' *> ignored)
   void $ char ')'
   ignored
   pure $ ClassExpr name args

@@ -89,11 +89,14 @@ exprDoc (ClassExpr name args) =
   text "blue" "class " <>
   txt name <>
   txt "(" <>
-  intercalate (txt ", ") (map txt args) <> 
+  intercalate (txt ", ") (map argDoc args) <> 
   txt ")"
 exprDoc (ImportExpr name) =
   text "blue" "import " <>
   exprDoc (StringExpr name)
+exprDoc (ExternExpr string) =
+  text "blue" "extern " <>
+  text "green" (show string)
 
 showExpr :: Int -> Expr -> String
 showExpr width expr = pretty width $ group $ exprDoc expr
@@ -121,7 +124,7 @@ irDoc (BlockIr irs) =
   txt "}"
 irDoc (LambdaIr args ir) = 
   txt "\\" <> 
-  intercalate (txt ", ") (map argDoc args) <> 
+  intercalate (txt ", ") (map txt args) <> 
   txt " -> " <> 
   txt "(" <>
   nest 2 (line <> irDoc ir) <>
@@ -165,6 +168,9 @@ irDoc (ClassIr name args) =
   txt "(" <>
   intercalate (txt ", ") (map txt args) <> 
   txt ")"
+irDoc (ExternIr string) =
+  text "blue" "extern " <>
+  text "green" (show string)
 
 showIr :: Int -> Ir -> String
 showIr width ir = pretty width $ group $ irDoc ir

@@ -24,7 +24,8 @@
 class Then(result)
 
 // Represents an if expression that has not yet terminated.
-def else class Else()()
+class Else()
+def else Else()
 
 // Begins an if expression with a condition and consequent.
 def if(lazy condition, lazy consequent) 

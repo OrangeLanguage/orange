@@ -30,8 +30,9 @@ data Expr
   | MatchExpr Expr (List Pattern)
   | DefExpr (Maybe String) String Expr
   | InfixExpr Assoc String BigInt Expr
-  | ClassExpr String (List String)
+  | ClassExpr String (List Arg)
   | ImportExpr String
+  | ExternExpr String
 
 data Ir
   = BoolIr Boolean
@@ -42,11 +43,12 @@ data Ir
   | DotIr Ir String
   | ApplyIr Ir (List Ir)
   | BlockIr (List Ir)
-  | LambdaIr (List Arg) Ir
+  | LambdaIr (List String) Ir
   | DoIr Ir String Ir
   | HandleIr Ir Ir
   | DefIr String Ir
   | ExtendIr String String Ir
   | ClassIr String (List String)
+  | ExternIr String
 
 derive instance eqAssoc :: Eq Assoc
