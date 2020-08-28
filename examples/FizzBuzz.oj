@@ -1,18 +1,23 @@
 import "std/Prelude.oj" 
 import "std/List.oj" 
 import "std/Control.oj"
+import "std/Write.oj"
 
 def fizzBuzz(i)
     forEach(count(i)) { (x)
         if (x % 3 == 0 && x % 5 == 0) {
-            log("FizzBuzz")
+            write("FizzBuzz")
         }.elif (x % 3 == 0) {
-            log("Fizz")
+            write("Fizz")
         }.elif (x % 5 == 0) {
-            log("Buzz")
+            write("Buzz")
         }.else {
-            log(x)
+            write(x)
         }
     }
 
-fizzBuzz(100)
+def logFizzBuzz(i)
+    writeLog(fizzBuzz(i))
+
+def listFizzBuzz(i)
+    writeList(nil, fizzBuzz(i))

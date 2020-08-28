@@ -10,7 +10,7 @@ def cc() do CC()
 def callCC(f) f(cc())
 
 // Handles the CC effect by resuming with the resume function.
-def runCC(f)
+def runCC(lazy f)
     handle (f()) (effect) match (effect) {
-        CC() resume(resume)
+        CC() runCC(resume(resume))
     }

@@ -11,7 +11,7 @@ import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, ask, li
 import Control.Monad.State (class MonadState, StateT, evalStateT, get, put)
 import Data.Char.Unicode (isSpace)
 import Data.Either (either)
-import Data.List (List(..))
+import Data.List (List(..), last)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.String (drop, length)
@@ -126,7 +126,7 @@ generate expr = do
 eval :: String -> NodeRepl Unit
 eval expr = do
   generated <- compileTopLevel expr
-  void $ traverse log generated 
+  void $ traverse log (last generated) 
 
 command :: String -> NodeRepl Unit
 command line = case uncons line of

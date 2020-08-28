@@ -13,8 +13,8 @@ def set(state) do Set(state)
 def modify(f) set(f(get()))
 
 // Handles the state effect by mutating the state.
-def mutable(state, f) 
+def mutable(state, lazy f) 
     handle (f()) (effect) match (effect) {
-        Get() mutable(state, () resume(state))
-        Set(newState) mutable(newState, () resume({}))
+        Get() mutable(state, resume(state))
+        Set(newState) mutable(newState, resume({}))
     }
