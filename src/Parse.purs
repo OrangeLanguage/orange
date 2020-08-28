@@ -258,8 +258,15 @@ parseInfix = do
   expr <- parseExpr unit
   pure $ InfixExpr assoc op int expr
 
+parseImport :: Parser Expr
+parseImport = do
+  void $ string "import"
+  ignored
+  name <- parseString
+  pure $ ImportExpr name
+
 parseExpr :: Unit -> Parser Expr
-parseExpr unit = parseDo <|> parseHandle <|> parseMatch <|> parseDef <|> parseInfix <|> parseOperators unit <|> parseLambda
+parseExpr unit = parseDo <|> parseHandle <|> parseMatch <|> parseDef <|> parseInfix <|> parseImport <|> parseOperators unit <|> parseLambda
 
 parseProgram :: Parser (List Expr)
 parseProgram = do

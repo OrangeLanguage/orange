@@ -7,18 +7,19 @@ import Control.Monad.Except (class MonadTrans, ExceptT(..), mapExceptT, runExcep
 import Control.Monad.State (class MonadState, StateT(..), evalStateT, execStateT, get, mapStateT, modify, put)
 import Data.BigInt (BigInt)
 import Data.Either (Either(..))
-import Data.Identity (Identity)
 import Data.List (List(..), singleton, (:))
 import Data.Map (Map, insert, lookup)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
+import Effect (Effect)
 import Effect.Class (class MonadEffect)
+import Import (importFile)
 import Types (Arg(..), Assoc(..), Eval(..), Expr(..), Ir(..), Op(..), Pattern(..))
 
 newtype CompilerT m a = CompilerT (StateT Env (ExceptT String m) a)
-type Compiler a = CompilerT Identity a
+type Compiler a = CompilerT Effect a
 
 derive instance newtypeCompilerT :: Newtype (CompilerT m a) _
 derive newtype instance monadErrorCompilerT :: Monad m => MonadError String (CompilerT m)
@@ -40,14 +41,14 @@ transformCompilerT f (CompilerT c) = CompilerT $ mapStateT (mapExceptT f) c
 runCompilerT :: forall m a. Monad m => CompilerT m a -> Env -> m (Either String Env)
 runCompilerT compiler env = runExceptT $ execStateT (unwrap compiler) env
 
-runCompiler :: forall a. Compiler a -> Env -> Either String Env
-runCompiler compiler env = unwrap $ runCompilerT compiler env
+runCompiler :: forall a. Compiler a -> Env -> Effect (Either String Env)
+runCompiler compiler env = runCompilerT compiler env
 
 evalCompilerT :: forall m a. Monad m => CompilerT m a -> Env -> m (Either String a)
 evalCompilerT compiler env = runExceptT $ evalStateT (unwrap compiler) env
 
-evalCompiler :: forall a. Compiler a -> Env -> Either String a
-evalCompiler compiler env = unwrap $ evalCompilerT compiler env
+evalCompiler :: forall a. Compiler a -> Env -> Effect (Either String a)
+evalCompiler compiler env = evalCompilerT compiler env
 
 data Env = Env Int (Map String Op)
 
@@ -63,10 +64,10 @@ fresh = do
   put $ Env (i + 1) ops
   pure $ "_" <> show i
 
-compile :: forall m. Monad m => Expr -> CompilerT m Ir
+compile :: forall m. Monad m => MonadEffect m => Expr -> CompilerT m Ir
 compile expr = compileCont expr pure 
 
-compileCont :: forall m. Monad m => Expr -> (Ir -> CompilerT m Ir) -> CompilerT m Ir
+compileCont :: forall m. Monad m => MonadEffect m => Expr -> (Ir -> CompilerT m Ir) -> CompilerT m Ir
 compileCont (BoolExpr int) f = f $ BoolIr int
 compileCont (IntExpr int) f = f $ IntIr int
 compileCont (CharExpr char) f = f $ CharIr char
@@ -111,9 +112,12 @@ compileCont (DefExpr (Just clazz) name expr) f = do
 compileCont (InfixExpr assoc name prec expr) f = do
   void $ modify $ insertOp assoc name prec expr
   compileCont expr f
-compileCont (ClassExpr name args) f = f $ClassIr name args
+compileCont (ClassExpr name args) f = f $ ClassIr name args
+compileCont (ImportExpr name) f = do
+  file <- importFile name
+  compileCont (BlockExpr file) f
 
-compileConts :: forall m. Monad m => List Expr -> (List Ir -> CompilerT m Ir) -> CompilerT m Ir
+compileConts :: forall m. Monad m => MonadEffect m => List Expr -> (List Ir -> CompilerT m Ir) -> CompilerT m Ir
 compileConts Nil f = f Nil
 compileConts (car : cdr) f = compileCont car \carC -> compileConts cdr \cdrC -> f (carC : cdrC)
 

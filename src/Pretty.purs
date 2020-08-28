@@ -91,6 +91,9 @@ exprDoc (ClassExpr name args) =
   txt "(" <>
   intercalate (txt ", ") (map txt args) <> 
   txt ")"
+exprDoc (ImportExpr name) =
+  text "blue" "import " <>
+  exprDoc (StringExpr name)
 
 showExpr :: Int -> Expr -> String
 showExpr width expr = pretty width $ group $ exprDoc expr
@@ -110,7 +113,7 @@ irDoc (DotIr ir name) =
 irDoc (ApplyIr ir args) = 
   irDoc ir <> 
   txt "(" <> 
-  group (nest 2 $ intercalate (txt ", ") $ map (irDoc >>> ((<>) line)) args) <> 
+  nest 2 (intercalate (txt ", ") $ map (irDoc >>> ((<>) line)) args) <> 
   txt ")"
 irDoc (BlockIr irs) = 
   txt "{" <>

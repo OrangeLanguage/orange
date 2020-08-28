@@ -31,6 +31,7 @@ data Expr
   | DefExpr (Maybe String) String Expr
   | InfixExpr Assoc String BigInt Expr
   | ClassExpr String (List String)
+  | ImportExpr String
 
 data Ir
   = BoolIr Boolean

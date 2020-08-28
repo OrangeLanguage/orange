@@ -10,3 +10,5 @@ def fizzBuzz(i)
             log(x)
         }
     }
+
+fizzBuzz(100)

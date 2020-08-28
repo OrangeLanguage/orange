@@ -77,7 +77,7 @@ tryCompiler :: forall a. Compiler a -> NodeRepl a
 tryCompiler ca = join $ liftCompiler $ catchError (ca <#> pure) (pure <<< throwError <<< Generic)
 
 liftCompiler :: forall a. Compiler a -> NodeRepl a
-liftCompiler comp = NodeRepl $ lift $ lift $ lift $ transformCompilerT (unwrap >>> pure) comp
+liftCompiler comp = NodeRepl $ lift $ lift $ lift $ transformCompilerT liftEffect comp
 
 evalNodeRepl :: forall a. NodeRepl a -> Effect Unit
 evalNodeRepl nodeRepl = do
@@ -157,4 +157,5 @@ loadFile path = do
   chars <- either (throwError <<< Native) pure readResult
   let parseResult = runParser chars parseProgram
   exprs <- either (throwError <<< Parse) pure parseResult
-  void $ traverse (tryCompiler <<< Compiler.compile) exprs
+  void $ traverse (\x -> tryCompiler (Compiler.compile x)) exprs
+ 
