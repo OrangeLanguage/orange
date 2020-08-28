@@ -1,7 +1,7 @@
 (() => {
   _Int.prototype.inc = (function (_cont) {
     _cont = _cont();
-    return (this.add)(() => new _Int(1), () => (function (_0) {
+    return (this.add)(() => new _Int(1n), () => (function (_0) {
       _0 = _0();
       return _cont(() => _0);
     }));
