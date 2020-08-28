@@ -5,7 +5,7 @@ import Prelude
 import Control.Monad.Writer (Writer, runWriter, tell)
 import Data.Array (elem)
 import Data.BigInt (toString)
-import Data.List (fold, init, intercalate, last)
+import Data.List (List(..), fold, init, intercalate, last, (:))
 import Data.Maybe (maybe)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
@@ -68,6 +68,7 @@ generateDoc (ApplyIr ir args) = do
     txt "(" <> 
     intercalate (txt ", ") argsDoc <> 
     txt ")"
+generateDoc (BlockIr (ir : Nil)) = generateDoc ir
 generateDoc (BlockIr irs) = 
   let (Tuple irDocs docs) = runWriter $ traverse generateDoc irs
   in pure $ 

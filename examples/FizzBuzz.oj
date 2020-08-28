@@ -1,4 +1,8 @@
-def fizzBuzz(i) 
+import "std/Prelude.oj" 
+import "std/List.oj" 
+import "std/Control.oj"
+
+def fizzBuzz(i)
     forEach(count(i)) { (x)
         if (x % 3 == 0 && x % 5 == 0) {
             log("FizzBuzz")

@@ -4,6 +4,7 @@ import Prelude
 
 import Compiler (Env(..), compile, evalCompiler)
 import Data.Either (either)
+import Data.Foldable (fold)
 import Effect (Effect)
 import Effect.Exception (throw)
 import Generator (generate)
@@ -32,5 +33,5 @@ generatorTest name path = Golden.basic name path \input -> do
   let parseResult = runParser input parseProgram
   exprs <- either (\e -> throw $ show e) pure parseResult
   compileResult <- evalCompiler (compile $ BlockExpr exprs) (Env 0 mempty)
-  ir <- either (\e -> throw e) pure compileResult
-  pure $ generate 80 ir
+  irs <- either (\e -> throw e) pure compileResult
+  pure $ fold (map (generate 80) irs)

@@ -11,6 +11,7 @@ import Control.Monad.Reader (class MonadAsk, class MonadReader, ReaderT, ask, li
 import Control.Monad.State (class MonadState, StateT, evalStateT, get, put)
 import Data.Char.Unicode (isSpace)
 import Data.Either (either)
+import Data.List (List(..))
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.String (drop, length)
@@ -56,10 +57,10 @@ derive newtype instance monadReaderNodeRepl :: MonadReader Interface NodeRepl
 derive newtype instance monadErrorNodeRepl :: MonadError ReplError NodeRepl
 derive newtype instance monadThrowNodeRepl :: MonadThrow ReplError NodeRepl
 
-compileTopLevel :: String -> NodeRepl (Maybe String)
+compileTopLevel :: String -> NodeRepl (List String)
 compileTopLevel expr = do
-  ir <- tryCompile expr
-  traverse (Generator.generate 40 >>> evaluateResult) ir
+  irs <- tryCompile expr
+  traverse (Generator.generate 40 >>> evaluateResult) irs
   where
     evaluateResult :: String -> NodeRepl String
     evaluateResult generated = do
@@ -69,10 +70,10 @@ compileTopLevel expr = do
       either
         (throwError <<< Native) (\succ -> put newState *> pure succ) result
 
-tryCompile :: String -> NodeRepl (Maybe Ir)
+tryCompile :: String -> NodeRepl (List Ir)
 tryCompile program = do
   tree <- parse program
-  maybe (pure Nothing) (\t -> tryCompiler $ Compiler.compile t <#> Just) tree
+  maybe (pure Nil) (\t -> tryCompiler $ Compiler.compile t) tree
 
 tryCompiler :: forall a. Compiler a -> NodeRepl a
 tryCompiler ca = join $ liftCompiler $ catchError (ca <#> pure) (pure <<< throwError <<< Generic)
@@ -114,18 +115,18 @@ handleError err = logShow err
  
 compile :: String -> NodeRepl Unit
 compile expr = do
-  ir <- tryCompile expr
-  maybe (pure unit) (log <<< showIr 40) ir
+  irs <- tryCompile expr
+  void $ traverse (log <<< showIr 40) irs
 
 generate :: String -> NodeRepl Unit
 generate expr = do
-  ir <- tryCompile expr
-  maybe (pure unit) (log <<< highlightJS <<< Generator.generate 40) ir
+  irs <- tryCompile expr
+  void $ traverse (log <<< highlightJS <<< Generator.generate 40) irs
 
 eval :: String -> NodeRepl Unit
 eval expr = do
   generated <- compileTopLevel expr
-  maybe (pure unit) log generated 
+  void $ traverse log generated 
 
 command :: String -> NodeRepl Unit
 command line = case uncons line of

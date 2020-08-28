@@ -113,18 +113,18 @@ irDoc (DotIr ir name) =
 irDoc (ApplyIr ir args) = 
   irDoc ir <> 
   txt "(" <> 
-  nest 2 (intercalate (txt ", ") $ map (irDoc >>> ((<>) line)) args) <> 
+  nest 2 (intercalate (txt ", ") $ map irDoc args) <> 
   txt ")"
 irDoc (BlockIr irs) = 
   txt "{" <>
-  group (nest 2 (intercalate (txt ";") $ map (irDoc >>> ((<>) line)) irs) <> line) <>
+  nest 2 (intercalate (txt ";") $ map (irDoc >>> ((<>) line)) irs) <> line <>
   txt "}"
 irDoc (LambdaIr args ir) = 
   txt "\\" <> 
   intercalate (txt ", ") (map argDoc args) <> 
   txt " -> " <> 
   txt "(" <>
-  group (nest 2 $ line <> irDoc ir) <>
+  nest 2 (line <> irDoc ir) <>
   txt ")"
 irDoc (DoIr ir name cont) = 
   text "blue" "do " <> 

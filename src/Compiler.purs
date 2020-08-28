@@ -64,10 +64,10 @@ fresh = do
   put $ Env (i + 1) ops
   pure $ "_" <> show i
 
-compile :: forall m. Monad m => MonadEffect m => Expr -> CompilerT m Ir
-compile expr = compileCont expr pure 
+compile :: forall m. Monad m => MonadEffect m => Expr -> CompilerT m (List Ir)
+compile expr = compileCont expr (singleton >>> pure)
 
-compileCont :: forall m. Monad m => MonadEffect m => Expr -> (Ir -> CompilerT m Ir) -> CompilerT m Ir
+compileCont :: forall m. Monad m => MonadEffect m => Expr -> (Ir -> CompilerT m (List Ir)) -> CompilerT m (List Ir)
 compileCont (BoolExpr int) f = f $ BoolIr int
 compileCont (IntExpr int) f = f $ IntIr int
 compileCont (CharExpr char) f = f $ CharIr char
@@ -79,7 +79,7 @@ compileCont (ApplyExpr fun args) f =
     compileConts args \argsIr -> do
       name <- fresh
       cont <- f $ IdentIr name 
-      pure $ ApplyIr funIr (argsIr <> singleton (LambdaIr (singleton (Arg EagerEval name)) cont))
+      pure $ singleton $ ApplyIr funIr (argsIr <> singleton (LambdaIr (singleton (Arg EagerEval name)) (BlockIr cont)))
 compileCont (OpExpr expr operators) f = do
   env <- get
   ops <- traverse (\(Tuple name e) -> case lookupOp name env of
@@ -91,33 +91,36 @@ compileCont (BlockExpr (expr : Nil)) f = compileCont expr f
 compileCont (BlockExpr exprs) f = compileConts exprs \irs -> f $ BlockIr irs
 compileCont (LambdaExpr args expr) f = do
   env <- get
-  exprIr <- compileCont expr (\x -> pure $ ApplyIr (IdentIr "_cont") (x : Nil))
+  exprIr <- compileCont expr (\x -> pure $ singleton $ ApplyIr (IdentIr "_cont") (x : Nil))
   put env
-  f $ LambdaIr (args <> singleton (Arg EagerEval "_cont")) exprIr
+  f $ LambdaIr (args <> singleton (Arg EagerEval "_cont")) (BlockIr exprIr)
 compileCont (DoExpr expr) f = do
   name <- fresh
   cont <- f $ IdentIr name
-  compileCont expr (\ir -> pure $ DoIr ir name cont)
+  compileCont expr (\ir -> pure $ singleton $ DoIr ir name (BlockIr cont))
 compileCont (HandleExpr expr cont) f = do
   ir <- compile expr
   contIr <- compile cont
-  f $ HandleIr ir contIr
+  f $ HandleIr (BlockIr ir) (BlockIr contIr)
 compileCont (MatchExpr expr patterns) f = compileCont (desugarMatch expr patterns) f
 compileCont (DefExpr Nothing name expr) f = do
   ir <- compile expr
-  f $ DefIr name ir
+  cont <- f $ IdentIr name
+  pure $ DefIr name (BlockIr ir) : cont
 compileCont (DefExpr (Just clazz) name expr) f = do
   ir <- compile expr
-  f $ ExtendIr clazz name ir
+  f $ ExtendIr clazz name (BlockIr ir)
 compileCont (InfixExpr assoc name prec expr) f = do
   void $ modify $ insertOp assoc name prec expr
   compileCont expr f
 compileCont (ClassExpr name args) f = f $ ClassIr name args
 compileCont (ImportExpr name) f = do
-  file <- importFile name
-  compileCont (BlockExpr file) f
+  exprs <- importFile name
+  irs <- traverse compile exprs
+  last <- f $ IdentIr "_unit"
+  pure $ (irs >>= identity) <> last
 
-compileConts :: forall m. Monad m => MonadEffect m => List Expr -> (List Ir -> CompilerT m Ir) -> CompilerT m Ir
+compileConts :: forall m. Monad m => MonadEffect m => List Expr -> (List Ir -> CompilerT m (List Ir)) -> CompilerT m (List Ir)
 compileConts Nil f = f Nil
 compileConts (car : cdr) f = compileCont car \carC -> compileConts cdr \cdrC -> f (carC : cdrC)
 
