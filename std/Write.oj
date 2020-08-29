@@ -13,10 +13,12 @@ def writeLog(lazy f)
             log(elem)
             writeLog { resume({}) }
         }
+        Any() resume(do effect)
     }
 
 // Handles the write effect by writing to a list.
 def writeList(list, lazy f)
     handle ({ f() list }) (effect) match (effect) {
         Write(elem) elem : writeList(list) { resume({}) }
+        Any() resume(do effect)
     }

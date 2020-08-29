@@ -13,4 +13,5 @@ def callCC(f) f(cc())
 def runCC(lazy f)
     handle (f()) (effect) match (effect) {
         CC() runCC(resume(resume))
+        Any() resume(do effect)
     }

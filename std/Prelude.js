@@ -1,4 +1,10 @@
-class _Any {}
+class _Any {
+    asAny(f, cont, _cont) {
+        return f(((f) =>
+          f(((_2) =>
+            _cont(_2)))));
+    }
+}
 
 const BigInt = require('big-integer');
 

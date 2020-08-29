@@ -17,4 +17,5 @@ def mutable(state, lazy f)
     handle (f()) (effect) match (effect) {
         Get() mutable(state) { resume(state) }
         Set(newState) mutable(newState) { resume({}) }
+        Any() resume(do effect)
     }

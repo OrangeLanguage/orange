@@ -136,6 +136,7 @@ def readString(string, i, lazy f)
         Next() readString(string, i + 1) { resume({}) }
         HasNext() readString(string, i) { resume(i < string.length()) }
         Peek() readString(string, i) { resume(string.charAt(i)) }
+        Any() resume(do eff)
     }
 ```
 
