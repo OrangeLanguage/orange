@@ -16,7 +16,11 @@ features of both object-oriented and purely-functional languages.
 ### That's cool and all, but show me some code
 
 In the spirit of the Repl.it language jam, we'll use Orange to implement a
-simple interpreter. To start, we'll define a simple arithmetic language.
+simple interpreter. You can try the examples by pasting them into the Orange 
+repl, or you can test out the end result using `import "examples/Language.oj"`.
+The repl can be started with `npm install` and `npm start`.
+
+To begin, we'll define a simple arithmetic language.
 
 ```
 class IntExpr(int)

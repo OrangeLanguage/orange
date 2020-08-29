@@ -1,0 +1,18 @@
+// The read effect allows a function to read elements from an input. The input 
+// is defined by the handler so functions will work with any input. Reading can
+// perform IO such as reading from a file, but can also be pure such as reading
+// from a list.
+class Next()
+class HasNext()
+class Peek()
+def next() do Next()
+def hasNext() do HasNext()
+def peek() do Peek()
+
+// Handles the read effect by reading from a string.
+def readString(string, i, lazy f)
+    handle (f()) (eff) match (eff) {
+        Next() readString(string, i + 1) { resume({}) }
+        HasNext() readString(string, i) { resume(i < string.length()) }
+        Peek() readString(string, i) { resume(string.charAt(i)) }
+    }

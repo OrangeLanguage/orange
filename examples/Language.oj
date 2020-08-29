@@ -1,4 +1,5 @@
 import "std/Prelude.oj"
+import "std/Read.oj"
 
 class IntExpr(int)
 class AddExpr(lhs, rhs)
@@ -28,20 +29,6 @@ def Any.eval() match (this) {
 def Any.evalRoot() 
     handle (this.eval()) (n)
         do {"undefined " + n}
-
-class Next()
-class HasNext()
-class Peek()
-def next() do Next()
-def hasNext() do HasNext()
-def peek() do Peek()
-
-def readString(string, i, lazy f)
-    handle (f()) (eff) match (eff) {
-        Next() readString(string, i + 1) { resume({}) }
-        HasNext() readString(string, i) { resume(i < string.length()) }
-        Peek() readString(string, i) { resume(string.charAt(i)) }
-    }
 
 def IntExpr.toString() "Expr(" + this.int.toString() + ")"
 def AddExpr.toString() "Expr(" + this.lhs.toString() + " + " + this.rhs.toString() + ")"
