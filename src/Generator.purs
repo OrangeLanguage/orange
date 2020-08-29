@@ -164,7 +164,7 @@ generateDoc _ (ClassIr name args) = do
     txt "function _" <>
     txt (escape name) <>
     txt "(" <>
-    intercalate (txt ", ") (map txt args) <> 
+    intercalate (txt ", ") (map (escape >>> txt) args) <> 
     txt ") {" <>
     nest 2 (fold (map classArgDoc args)) <>
     line <>

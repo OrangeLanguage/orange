@@ -4,7 +4,7 @@ import "std/Control.oj"
 import "std/Write.oj"
 
 def fizzBuzz(i)
-    forEach(count(i)) { (x)
+    for (count(i)) { (x)
         if (x % 3 == 0 && x % 5 == 0) {
             write("FizzBuzz")
         }.elif (x % 3 == 0) {

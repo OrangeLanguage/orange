@@ -47,8 +47,8 @@ ignored = skipMany (void space <|> comment)
 
 escape :: Parser Char
 escape = do
-  void $ string "\\\""
-  pure '"'
+  void $ char '\\'
+  noneOf []
 
 parseBool :: Parser Boolean
 parseBool = do

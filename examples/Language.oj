@@ -1,0 +1,162 @@
+import "std/Prelude.oj"
+
+class IntExpr(int)
+class AddExpr(lhs, rhs)
+class MulExpr(lhs, rhs)
+class IdentExpr(name)
+class LambdaExpr(name, expr)
+class ApplyExpr(fn, arg)
+
+class Env(get)
+
+def Env.insert(name, value)
+    Env((n) {n == name}.if(value, this.get(name)))
+
+def local(name, value, lazy f)
+    handle (f()) (n)
+        {n == name}.if(local(name, value) { resume(value) }, do name)
+
+def Any.eval() match (this) {
+    IntExpr(int) int
+    AddExpr(lhs, rhs) lhs.eval() + rhs.eval()
+    MulExpr(lhs, rhs) lhs.eval() * rhs.eval()
+    IdentExpr(name) do name
+    LambdaExpr(name, expr) (arg) local(name, arg) { expr.eval() }
+    ApplyExpr(fn, arg) fn.eval()(arg.eval())
+}
+
+def Any.evalRoot() 
+    handle (this.eval()) (n)
+        do {"undefined " + n}
+
+class Next()
+class HasNext()
+class Peek()
+def next() do Next()
+def hasNext() do HasNext()
+def peek() do Peek()
+
+def readString(string, i, lazy f)
+    handle (f()) (eff) match (eff) {
+        Next() readString(string, i + 1) { resume({}) }
+        HasNext() readString(string, i) { resume(i < string.length()) }
+        Peek() readString(string, i) { resume(string.charAt(i)) }
+    }
+
+def IntExpr.toString() "Expr(" + this.int.toString() + ")"
+def AddExpr.toString() "Expr(" + this.lhs.toString() + " + " + this.rhs.toString() + ")"
+def MulExpr.toString() "Expr(" + this.lhs.toString() + " * " + this.rhs.toString() + ")"
+def IdentExpr.toString() "Expr(" + this.name + ")"
+def LambdaExpr.toString() "Expr(λ" + this.name + "." + this.expr.toString() + ")"
+def ApplyExpr.toString() "Expr(" + this.fn.toString() + " $ " + this.arg.toString() + ")"
+
+def charToInt(c)
+    c.toInt() - '0'.toInt()
+
+def charIsInt(c)
+    c >= '0' && c <= '9'
+
+def let(x, f) f(x)
+
+def ifHasNext(lazy then, lazy f)
+    {hasNext().not()}.if(then(), f())
+
+def skipIgnored()
+    {hasNext() && peek() == ' '}.if({
+        next()
+        skipIgnored()
+    }, {})
+
+def parseIntExpr() {
+    def go(sum) 
+        {hasNext() && charIsInt(peek())}.if(
+            let(peek(), (char) {
+                next()
+                go(sum * 10 + charToInt(char))
+            }), sum)
+    skipIgnored()
+    IntExpr(go(0))
+}
+
+def parseParens() {
+    skipIgnored()
+    let(parseAddExpr(), (expr) {
+        {peek() != ')'}.if(do "Expected ')'") {
+            next()
+            expr
+        }
+    })
+}
+
+def charIsIdent(c)
+    c >= 'a' && c <= 'z'
+
+def parseIdentExpr() {
+    def go(ident) 
+        {hasNext() && charIsIdent(peek())}.if(
+            let(peek(), (char) {
+                next()
+                go(ident + char.toString())
+            }), ident)
+    skipIgnored()
+    IdentExpr(go(""))
+}
+
+def parseLambdaExpr() {
+    skipIgnored()
+    let(parseIdentExpr(), (ident) {
+        skipIgnored()
+        let(parseAddExpr(), (expr) LambdaExpr(ident.name, expr))
+    })
+}
+
+def parseAtomicExpr() {
+    skipIgnored()
+    ifHasNext(do "Unexpected end of reader") {
+        {peek() == '('}.if({ next() parseParens() }) {
+            {peek() == '\\'}.if({ next() parseLambdaExpr() }) {
+                {charIsInt(peek())}.if(parseIntExpr()) {
+                    {charIsIdent(peek())}.if(parseIdentExpr()) {
+                        do "Unexpected character"
+                    }
+                }
+            }
+        }
+    }
+}
+
+def parseApplyExpr() 
+    let(parseAtomicExpr(), (expr) {
+        skipIgnored()
+        ifHasNext(expr) {
+            {peek() == '$'}.if({
+                next()
+                ApplyExpr(expr, parseAtomicExpr())
+            }, expr)
+        }
+    })
+
+def parseMulExpr() 
+    let(parseApplyExpr(), (expr) {
+        skipIgnored()
+        ifHasNext(expr) {
+            {peek() == '*'}.if({
+                next()
+                MulExpr(expr, parseMulExpr())
+            }, expr)
+        }
+    })
+
+def parseAddExpr() 
+    let(parseMulExpr(), (expr) { 
+        skipIgnored()
+        ifHasNext(expr) {
+            {peek() == '+'}.if({
+                next()
+                AddExpr(expr, parseAddExpr())
+            }, expr)
+        }
+    })
+
+def eval(string)
+    readString(string, 0, parseAddExpr()).evalRoot()

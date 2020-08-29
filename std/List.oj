@@ -19,11 +19,11 @@ def count(i) {
     go(i, nil)
 }
 
-def forEach(list, f) match (list) {
+def for(list, f) match (list) {
     Nil() {}
     Cons(car, cdr) {
         f(car)
-        forEach(cdr, f)
+        for(cdr, f)
     }
 }
 

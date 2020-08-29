@@ -15,6 +15,7 @@ import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Effect.Class (class MonadEffect)
+import Generator (escape)
 import Import (importFile)
 import Types (Arg(..), Assoc(..), Eval(..), Expr(..), Ir(..), Op(..), Pattern(..))
 
@@ -124,7 +125,7 @@ compileCont (ClassExpr name args) f = do
   constructor <- compile $ 
     DefExpr Nothing name $ 
       LambdaExpr args $ 
-        ExternExpr ("new _" <> name <> "(" <> intercalate ", " argNames <> ")")
+        ExternExpr ("new _" <> name <> "(" <> intercalate ", " (map escape argNames) <> ")")
   matchAny <- compile $ 
     DefExpr (Just "Any") ("as" <> name) $ 
       LambdaExpr (Arg EagerEval "f" : Arg LazyEval "cont" : Nil) $

@@ -13,16 +13,39 @@ class _Bool extends _Any {
 
     _if(t, f, _cont) { 
         if (this.value) {
-            return t(t => _cont(t))
+            return t(t => _cont(t));
         } else {
             return f(f => _cont(f));
         }
     }
 
-    toString(_cont) { return _cont(new _String(this.value.toString())); }
+    and(x, _cont) { 
+        if (this.value) {  
+            return x(x => _cont(x));
+        } else {
+            return _cont(_false);
+        }
+    }
 
-    and(x, _cont) { return x(x => _cont(new _Bool(this.value && x.value))); }
-    or(x, _cont) { return x(x => _cont(new _Bool(this.value || x.value))); }
+    or(x, _cont) {
+        if (this.value) {
+            return _cont(_true);
+        } else {
+            return x(x => _cont(x));
+        }
+    }
+
+    not(_cont) {
+        if (this.value) {
+            return _cont(_false);
+        } else {
+            return _cont(_true);
+        }
+    }
+
+    toString(_cont) { return _cont(new _String(this.value.toString())); }
+    eq(x, _cont) { return x(x => _cont(new _Bool(this.value == x.value))); }
+    neq(x, _cont) { return x(x => _cont(new _Bool(this.value != x.value))); }
 }
 
 const _true = new _Bool(true);
@@ -58,6 +81,13 @@ class _Char extends _Any {
     }
 
     toString(_cont) { return _cont(new _String(this.value.toString())); }
+    toInt(_cont) { return _cont(new _Int(this.value.charCodeAt())); }
+    lt(x, _cont) { return x(x => _cont(new _Bool(this.value < x.value))); }
+    gt(x, _cont) { return x(x => _cont(new _Bool(this.value > x.value))); }
+    eq(x, _cont) { return x(x => _cont(new _Bool(this.value == x.value))); }
+    leq(x, _cont) { return x(x => _cont(new _Bool(this.value <= x.value))); }
+    geq(x, _cont) { return x(x => _cont(new _Bool(this.value >= x.value))); }
+    neq(x, _cont) { return x(x => _cont(new _Bool(this.value != x.value))); }
 }
 
 class _String extends _Any {
@@ -67,7 +97,11 @@ class _String extends _Any {
     }
 
     toString(_cont) { return _cont(this); }
+    length(_cont) { return _cont(new _Int(this.value.length)); }
+    charAt(x, _cont) { return x(x => _cont(new _Char(this.value.charAt(x.value)))); }
     add(x, _cont) { return x(x => _cont(new _String(this.value + x.value))); }
+    eq(x, _cont) { return x(x => _cont(new _Bool(this.value == x.value))); }
+    neq(x, _cont) { return x(x => _cont(new _Bool(this.value != x.value))); }
 }
 
 const log = (line, _cont) => {

@@ -1,0 +1,20 @@
+import "std/Prelude.oj"
+import "std/Control.oj"
+import "std/List.oj"
+import "std/Pair.oj"
+import "std/State.oj"
+
+def fibonacciRec(x)
+    if (x <= 1) { 
+        1
+    }.else {
+        fibonacciRec(x - 1) + fibonacciRec(x - 2)
+    }
+
+def fibonacci(x)
+    mutable(Pair(1, 1)) {
+        for (count(x - 1)) { (e)
+            modify((p) Pair(p.snd, p.fst + p.snd))
+        }
+        get().snd
+    }
