@@ -6,6 +6,10 @@ class _Any {
     }
 }
 
+function Any(_cont) {
+  return _cont(new _Any());
+}
+
 const BigInt = require('big-integer');
 
 const _unit = new _Any();

@@ -271,7 +271,8 @@ readString("x", 0, parseAddExpr())
 readString("\\x x", 0, parseAddExpr())
 
 // ((x 1) 2))
-readString("x(1 2)", 0, parseAddExpr())```
+readString("x(1 2)", 0, parseAddExpr())
+```
 
 With the parser complete, we can connect the parser and evaluator to define an 
 eval function.
@@ -288,6 +289,102 @@ def inc eval("\\x x + 1")
 // 2
 inc(1)
 ```
+
+## Potential Features
+
+Since Orange was implemented in 21 days during the Repl.it language jam, there 
+are lots of cool features that we were unable to implement. This is an
+incomprehensive list of features that could potentially be added to Orange in 
+the future.
+
+### Improved Syntax and Syntax Sugar
+
+Orange's current syntax is sufficent but incomplete. Some examples of additional
+syntax include infix application, unary operators, better `def` and `let`,
+newline statement terminators, and additional patterns for pattern matching.
+
+### Named Effect Handlers
+
+Multiple effects can be approximated with unique objects, but there is currently
+no way to generalize named effects. Named effects work especially well with
+infix operators, allowing traditional `name = value` syntax
+
+```
+class Write(unique, elem)
+
+def Any.write(elem) do Write(this, elem)
+infix right 1 += write
+
+def Unique.writeList(list, lazy f) {
+    handle ({ f() list }) (effect) match (effect) {
+        Write(unique, elem) 
+            if (unique == this) { 
+                elem : writeList(list) { resume({}) }
+            }.else { resume(do effect) }
+        Any() resume(do effect)
+    }
+}
+
+Any().writeList(nil, (x) {
+    Any().writeList(nil, (y) {
+        x += 1
+        y += 2
+    })
+})
+```
+
+### Let Generalized for any Continuation
+
+Let syntax currently desugars to the following declaration.
+
+```
+def let(x, f) f(x)
+let(2, (x) ...)
+```
+
+This could be extended to work with any function that takes a continuation.
+
+```
+def mutable(x, f) Any().mutableState(x, (var) f(var))
+
+let mutable x 0
+let mutable x 0
+x += 2
+++y
+```
+
+### Lenses
+
+Lenses are necessary when dealing with immutable data to update nested fields.
+This can be done by generating lenses for all fields by default while allowing
+classes like List to define their own custom lenses.
+
+```
+class Address(street, city)
+class Person(name, address)
+
+def person ...
+
+import "std/Lens.oj"
+
+// Colon is being used for lens composition
+person:address:street.get() 
+person:address:street.set("123rd St")
+```
+
+### The Big One, Types
+
+Adding a type system to Orange has its pros and cons. On the upside, it greatly 
+improves static analysis for both objects and effects. On the downside, it
+reduces flexibilty and steepens the learning curve for new functional 
+programmers. We are generally in favor of type systems, but we are not sure
+if it is the correct choice for Orange--and even if it were, it would take lots
+of time that could be going towards implementing other features.
+
+If we were to add a type system, it would likely be an extension of Scala's Dot 
+Calculus with effect types and bidirectional type checking. Describing Orange's 
+syntax for such a type system is too speculative to be done here, but it would
+take the same familiarity over simplicity approach as the rest of the language.
 
 ## Getting Started
 
