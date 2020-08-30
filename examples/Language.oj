@@ -11,31 +11,25 @@ class ApplyExpr(fn, arg)
 class Env(get)
 
 def Env.insert(name, value)
-    Env((n) {n == name}.if(value, this.get(name)))
+    Env((n) {n == name}.if(value, this.get(n)))
 
-def local(name, value, lazy f)
-    handle (f()) (n)
-        {n == name}.if(local(name, value) { resume(value) }, do name)
-
-def Any.eval() match (this) {
+def Any.eval(env) match (this) {
     IntExpr(int) int
-    AddExpr(lhs, rhs) lhs.eval() + rhs.eval()
-    MulExpr(lhs, rhs) lhs.eval() * rhs.eval()
-    IdentExpr(name) do name
-    LambdaExpr(name, expr) (arg) local(name, arg) { expr.eval() }
-    ApplyExpr(fn, arg) fn.eval()(arg.eval())
+    AddExpr(lhs, rhs) lhs.eval(env) + rhs.eval(env)
+    MulExpr(lhs, rhs) lhs.eval(env) * rhs.eval(env)
+    IdentExpr(name) env.get(name)
+    LambdaExpr(name, expr) (arg) expr.eval(env.insert(name, arg))
+    ApplyExpr(fn, arg) fn.eval(env)(arg.eval(env))
 }
 
-def Any.evalRoot() 
-    handle (this.eval()) (n)
-        do {"undefined " + n}
+def Any.evalRoot() this.eval(Env((name) do {"undefined " + name}))
 
-def IntExpr.toString() "Expr(" + this.int.toString() + ")"
-def AddExpr.toString() "Expr(" + this.lhs.toString() + " + " + this.rhs.toString() + ")"
-def MulExpr.toString() "Expr(" + this.lhs.toString() + " * " + this.rhs.toString() + ")"
-def IdentExpr.toString() "Expr(" + this.name + ")"
-def LambdaExpr.toString() "Expr(λ" + this.name + " " + this.expr.toString() + ")"
-def ApplyExpr.toString() "Expr(" + this.fn.toString() + " $ " + this.arg.toString() + ")"
+def IntExpr.toString() this.int.toString()
+def AddExpr.toString() "(" + this.lhs.toString() + " + " + this.rhs.toString() + ")"
+def MulExpr.toString() "(" + this.lhs.toString() + " * " + this.rhs.toString() + ")"
+def IdentExpr.toString() this.name
+def LambdaExpr.toString() "(λ" + this.name + " " + this.expr.toString() + ")"
+def ApplyExpr.toString() "(" + this.fn.toString() + " " + this.arg.toString() + ")"
 
 def charToInt(c)
     c.toInt() - '0'.toInt()
@@ -62,12 +56,9 @@ def parseIntExpr() {
     IntExpr(go(0))
 }
 
-class ParseError(string)
-def ParseError.toString() this.string
-
 def parseParens() {
     let expr parseAddExpr();
-    {peek() != ')'}.if(do ParseError("Expected ')'")) {
+    {peek() != ')'}.if(do "Expected ')'") {
         next()
         expr
     }
@@ -94,12 +85,12 @@ def parseLambdaExpr() {
 
 def parseAtomicExpr() {
     skipIgnored()
-    ifHasNext(do ParseError("Unexpected end of reader")) {
+    ifHasNext(do "Unexpected end of reader") {
         {peek() == '('}.if({ next() parseParens() }) {
             {peek() == '\\'}.if({ next() parseLambdaExpr() }) {
                 {charIsInt(peek())}.if(parseIntExpr()) {
                     {charIsIdent(peek())}.if(parseIdentExpr()) {
-                        do ParseError("Unexpected character")
+                        do {"Unexpected character '" + peek().toString() + "'"}
                     }
                 }
             }
@@ -107,13 +98,23 @@ def parseAtomicExpr() {
     }
 }
 
+def parseApplyTrail(expr) {
+    skipIgnored()
+    ifHasNext(expr) {
+        {peek() == ')'}.if({ 
+            next()
+            expr
+        }, parseApplyTrail(ApplyExpr(expr, parseAtomicExpr())))
+    }
+}
+
 def parseApplyExpr() {
     let expr parseAtomicExpr()
     skipIgnored()
     ifHasNext(expr) {
-        {peek() == '$'}.if({
+        {peek() == '('}.if({
             next()
-            ApplyExpr(expr, parseAtomicExpr())
+            parseApplyTrail(expr)
         }, expr)
     }
 }

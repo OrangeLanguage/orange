@@ -32,7 +32,7 @@
 			"patterns": [
 				{
 					"name": "keyword.orange",
-					"match": "\\b(def|let|infix|left|right|class|this|with|match|lazy|do|handle|resume|extern)\\b"
+					"match": "\\b(def|let|infix|left|right|class|this|import|match|lazy|do|handle|resume)\\b"
 				}
 			]
 		},

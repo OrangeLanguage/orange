@@ -56,8 +56,8 @@ def Any.eval() match (this) {
 }
 ```
 
-This arithmetic language is cool, but it only works for simple programs. We'll 
-add functions and application soon, but first we'll need an environment.
+This arithmetic language is cool, but it only works for simple programs. To add 
+functions and applications, we'll need an environment.
 
 ```
 class Env(get)
@@ -65,7 +65,7 @@ class Env(get)
 infix left 4 ==(x, y) x.eq(y)
 
 def Env.insert(name, value)
-    Env((n) {n == name}.if(value, this.get(name)))
+    Env((n) {n == name}.if(value, this.get(n)))
 ```
 
 Now that we have an environment, we can interpret functions and applications.
@@ -96,27 +96,6 @@ LambdaExpr("a", MulExpr(IntExpr(2), IdentExpr("a"))).evalRoot()(2)
 ApplyExpr(LambdaExpr("a", MulExpr(IntExpr(2), IdentExpr("a"))), IntExpr(2)).evalRoot()
 ```
 
-We can clean up eval a bit using effects.
-
-```
-def local(name, value, lazy f)
-    handle (f()) (n)
-        {n == name}.if(local(name, value) { resume(value) }, do name)
-
-def Any.eval() match (this) {
-    IntExpr(int) int
-    AddExpr(lhs, rhs) lhs.eval() + rhs.eval()
-    MulExpr(lhs, rhs) lhs.eval() * rhs.eval()
-    IdentExpr(name) do name
-    LambdaExpr(name, expr) (arg) local(name, arg) { expr.eval() }
-    ApplyExpr(fn, arg) fn.eval()(arg.eval())
-}
-
-def Any.evalRoot() 
-    handle (this.eval()) (n)
-        do {"undefined " + n}
-```
-
 With our evaluator complete, we can move on to the parser. First we'll need to
 define a reader effect.
 
@@ -143,7 +122,7 @@ def readString(string, i, lazy f)
 We can use this effect to define an integer parser.
 
 ```
-def IntExpr.toString() "Expr(" + this.int.toString() + ")"
+def IntExpr.toString() this.int.toString()
 
 infix left 6 -(x, y) x.sub(y)
 infix left 4 <=(x, y) x.leq(y)
@@ -174,15 +153,15 @@ def parseIntExpr() {
     IntExpr(go(0))
 }
 
-// Expr(123)
+// 123
 readString("123", 0, parseIntExpr())
 ```
 
 Now we can use precedence climbing to parse addition and multiplication.
 
 ```
-def AddExpr.toString() "Expr(" + this.lhs.toString() + " + " + this.rhs.toString() + ")"
-def MulExpr.toString() "Expr(" + this.lhs.toString() + " * " + this.rhs.toString() + ")"
+def AddExpr.toString() "(" + this.lhs.toString() + " + " + this.rhs.toString() + ")"
+def MulExpr.toString() "(" + this.lhs.toString() + " * " + this.rhs.toString() + ")"
 
 def ifHasNext(lazy then, lazy f)
     {hasNext().not()}.if(then(), f())
@@ -212,19 +191,19 @@ def parseAddExpr() {
     }
 }
 
-// Expr(Expr(Expr(2) * Expr(2)) + Expr(1))
+// ((2 * 2) + 1)
 readString("2*2+1", 0, parseAddExpr())
 
-// Expr(Expr(1) + Expr(Expr(2) * Expr(2)))
+// (1 + (2 * 2))
 readString("1+2*2", 0, parseAddExpr())
 ```
 
 The rest of the parser is simply an extension to the existing parser.
 
 ```
-def IdentExpr.toString() "Expr(" + this.name + ")"
-def LambdaExpr.toString() "Expr(λ" + this.name + " " + this.expr.toString() + ")"
-def ApplyExpr.toString() "Expr(" + this.fn.toString() + " $ " + this.arg.toString() + ")"
+def IdentExpr.toString() this.name
+def LambdaExpr.toString() "(λ" + this.name + " " + this.expr.toString() + ")"
+def ApplyExpr.toString() "(" + this.fn.toString() + " " + this.arg.toString() + ")"
 
 def parseParens() {
     skipIgnored()
@@ -282,18 +261,17 @@ def parseApplyExpr() {
     }
 }
 
-// Expr(Expr(2) * Expr(Expr(2) + Expr(1)))
+// (2 * (2 + 1))
 readString("2 * (2 + 1)", 0, parseAddExpr())
 
-// Expr(x)
+// x
 readString("x", 0, parseAddExpr())
 
-// Expr(λx Expr(x))
+// (λx x)
 readString("\\x x", 0, parseAddExpr())
 
-// Expr(Expr(Expr(x) $ Expr(1)) $ Expr(2))
-readString("(x $ 1) $ 2", 0, parseAddExpr())
-```
+// ((x 1) 2))
+readString("x(1 2)", 0, parseAddExpr())```
 
 With the parser complete, we can connect the parser and evaluator to define an 
 eval function.
