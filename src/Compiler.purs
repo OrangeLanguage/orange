@@ -93,13 +93,9 @@ compileCont (BlockExpr exprs) f = compileConts exprs \irs -> f $ BlockIr irs
 compileCont (LambdaExpr args expr) f = do
   env <- get
   exprIr <- compileCont expr (\x -> pure $ singleton $ ApplyIr (IdentIr "_cont") (x : Nil))
-  let evalIr = foldr eval (BlockIr exprIr) args
+  let evalIr = foldr evalArg (BlockIr exprIr) args
   put env
   f $ LambdaIr (map (\(Arg _ name) -> name) args <> singleton "_cont") evalIr
-    where
-      eval :: Arg -> Ir -> Ir
-      eval (Arg EagerEval name) ir = ApplyIr (IdentIr name) (singleton (LambdaIr (singleton name) ir))
-      eval (Arg LazyEval name) ir = ir
 compileCont (DoExpr expr) f = do
   name <- fresh
   cont <- f $ IdentIr name
@@ -116,7 +112,13 @@ compileCont (DefExpr Nothing name expr) f = do
   pure $ DefIr name (BlockIr irs) : cont
 compileCont (DefExpr (Just clazz) name expr) f = do
   irs <- compile expr
-  f $ ExtendIr clazz name (BlockIr irs)
+  cont <- f $ BlockIr Nil
+  pure $ ExtendIr clazz name (BlockIr irs) : cont
+compileCont (LetExpr name expr) f = do
+  irs <- compile (LambdaExpr Nil expr)
+  cont <- f $ IdentIr name
+  let lambda = LambdaIr (singleton name) (evalArg (Arg EagerEval name) (BlockIr cont))
+  pure $ singleton $ ApplyIr lambda (singleton $ BlockIr irs)
 compileCont (InfixExpr assoc name prec expr) f = do
   void $ modify $ insertOp assoc name prec expr
   compileCont expr f
@@ -146,6 +148,10 @@ compileCont (ExternExpr string) f = f $ ExternIr string
 compileConts :: forall m. Monad m => MonadEffect m => List Expr -> (List Ir -> CompilerT m (List Ir)) -> CompilerT m (List Ir)
 compileConts Nil f = f Nil
 compileConts (car : cdr) f = compileCont car \carC -> compileConts cdr \cdrC -> f (carC : cdrC)
+
+evalArg :: Arg -> Ir -> Ir
+evalArg (Arg EagerEval name) ir = ApplyIr (IdentIr name) (singleton (LambdaIr (singleton name) ir))
+evalArg (Arg LazyEval name) ir = ir
 
 desugarMatch :: Expr -> List Pattern -> Expr
 desugarMatch expr Nil = IdentExpr "undefined"

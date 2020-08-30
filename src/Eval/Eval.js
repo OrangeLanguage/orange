@@ -9,7 +9,7 @@ exports.evalString = function evalString(s) {
             }
         } catch (e) {
             if (e.effect) {
-                throw new Error("Unhandled effect " + e.effect.toString(x => x.value));
+                throw new Error("Unhandled effect: " + e.effect.toString(x => x.value));
             } else {
                 throw new Error(e.toString());
             }

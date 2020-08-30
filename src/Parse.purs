@@ -103,7 +103,7 @@ parseBlock :: Parser Expr
 parseBlock = do
   void $ char '{'
   ignored
-  exprs <- many $ parseExpr unit
+  exprs <- many (parseExpr unit <* many (char ';' *> ignored))
   void $ char '}'
   ignored
   pure $ BlockExpr exprs
@@ -244,6 +244,14 @@ parseDef = do
   expr <- parseExpr unit
   pure $ DefExpr clazz name expr
 
+parseLet :: Parser Expr
+parseLet = do
+  void $ string "let"
+  ignored
+  name <- parseIdent
+  expr <- parseExpr unit
+  pure $ LetExpr name expr
+
 parseAssoc :: Parser Assoc
 parseAssoc = string "left" *> pure LeftAssoc <|> string "right" *> pure RightAssoc
 
@@ -266,7 +274,7 @@ parseImport = do
   pure $ ImportExpr name
 
 parseExpr :: Unit -> Parser Expr
-parseExpr unit = parseDo <|> parseHandle <|> parseMatch <|> parseDef <|> parseInfix <|> parseImport <|> parseOperators unit <|> parseLambda
+parseExpr unit = parseDo <|> parseHandle <|> parseMatch <|> parseDef <|> parseLet <|> parseInfix <|> parseImport <|> parseOperators unit <|> parseLambda
 
 parseProgram :: Parser (List Expr)
 parseProgram = do

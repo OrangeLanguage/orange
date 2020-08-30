@@ -151,21 +151,26 @@ infix left 4 >=(x, y) x.geq(y)
 infix left 3 &&(x, lazy y) x.and(y())
 infix left 2 ||(x, lazy y) x.or(y())
 
+def skipIgnored()
+    (hasNext() && peek() == ' ').if({
+        next()
+        skipIgnored()
+    }, {})
+
 def charToInt(c)
     c.toInt() - '0'.toInt()
 
 def charIsInt(c)
     c >= '0' && c <= '9'
 
-def let(x, f) f(x)
-
 def parseIntExpr() {
     def go(sum) 
-        {hasNext() && charIsInt(peek())}.if(
-            let(peek(), (char) {
-                next()
-                go(sum * 10 + charToInt(char))
-            }), sum)
+        {hasNext() && charIsInt(peek())}.if({
+            let char peek()
+            next()
+            go(sum * 10 + charToInt(char))
+        }, sum)
+    skipIgnored()
     IntExpr(go(0))
 }
 
@@ -182,23 +187,30 @@ def MulExpr.toString() "Expr(" + this.lhs.toString() + " * " + this.rhs.toString
 def ifHasNext(lazy then, lazy f)
     {hasNext().not()}.if(then(), f())
 
-def parseMulExpr() 
-    let(parseIntExpr(), (expr) 
-        ifHasNext(expr) {
-            {peek() == '*'}.if({
-                next()
-                MulExpr(expr, parseMulExpr())
-            }, expr)
-        })
+// We'll implement this next
+def parseApplyExpr parseIntExpr
 
-def parseAddExpr() 
-    let(parseMulExpr(), (expr) 
-        ifHasNext(expr) {
-            {peek() == '+'}.if({
-                next()
-                AddExpr(expr, parseAddExpr())
-            }, expr)
-        })
+def parseMulExpr() {
+    let expr parseApplyExpr()
+    skipIgnored()
+    ifHasNext(expr) {
+        {peek() == '*'}.if({
+            next()
+            MulExpr(expr, parseMulExpr())
+        }, expr)
+    }
+}
+
+def parseAddExpr() {
+    let expr parseMulExpr()
+    skipIgnored()
+    ifHasNext(expr) {
+        {peek() == '+'}.if({
+            next()
+            AddExpr(expr, parseAddExpr())
+        }, expr)
+    }
+}
 
 // Expr(Expr(Expr(2) * Expr(2)) + Expr(1))
 readString("2*2+1", 0, parseAddExpr())
@@ -207,67 +219,20 @@ readString("2*2+1", 0, parseAddExpr())
 readString("1+2*2", 0, parseAddExpr())
 ```
 
-Skipping ignored characters allows us to process whitespace.
-
-```
-def skipIgnored()
-    (hasNext() && peek() == ' ').if({
-        next()
-        skipIgnored()
-    }, {})
-
-def parseIntExpr() {
-    def go(sum) 
-        {hasNext() && charIsInt(peek())}.if(
-            let(peek(), (char) {
-                next()
-                go(sum * 10 + charToInt(char))
-            }), sum)
-    skipIgnored()
-    IntExpr(go(0))
-}
-
-def parseMulExpr() 
-    let(parseIntExpr(), (expr) {
-        skipIgnored()
-        ifHasNext(expr) {
-            {peek() == '*'}.if({
-                next()
-                MulExpr(expr, parseMulExpr())
-            }, expr)
-        }
-    })
-
-def parseAddExpr() 
-    let(parseMulExpr(), (expr) { 
-        skipIgnored()
-        ifHasNext(expr) {
-            {peek() == '+'}.if({
-                next()
-                AddExpr(expr, parseAddExpr())
-            }, expr)
-        }
-    })
-
-// Expr(Expr(Expr(2) * Expr(2)) + Expr(1))
-readString("  2  *  2  +  1  ", 0, parseAddExpr())
-```
-
 The rest of the parser is simply an extension to the existing parser.
 
 ```
 def IdentExpr.toString() "Expr(" + this.name + ")"
-def LambdaExpr.toString() "Expr(λ" + this.name + "." + this.expr.toString() + ")"
+def LambdaExpr.toString() "Expr(λ" + this.name + " " + this.expr.toString() + ")"
 def ApplyExpr.toString() "Expr(" + this.fn.toString() + " $ " + this.arg.toString() + ")"
 
 def parseParens() {
     skipIgnored()
-    let(parseAddExpr(), (expr) {
-        {peek() != ')'}.if(do "Expected ')'") {
-            next()
-            expr
-        }
-    })
+    let expr parseAddExpr();
+    {peek() != ')'}.if(do "Expected ')'") {
+        next()
+        expr
+    }
 }
 
 def charIsIdent(c)
@@ -275,21 +240,20 @@ def charIsIdent(c)
 
 def parseIdentExpr() {
     def go(ident) 
-        {hasNext() && charIsIdent(peek())}.if(
-            let(peek(), (char) {
-                next()
-                go(ident + char.toString())
-            }), ident)
+        {hasNext() && charIsIdent(peek())}.if({
+            let char peek()
+            next()
+            go(ident + char.toString())
+        }, ident)
     skipIgnored()
     IdentExpr(go(""))
 }
 
 def parseLambdaExpr() {
     skipIgnored()
-    let(parseIdentExpr(), (ident) {
-        skipIgnored()
-        let(parseAddExpr(), (expr) LambdaExpr(ident.name, expr))
-    })
+    let ident parseIdentExpr()
+    skipIgnored()
+    LambdaExpr(ident.name, parseAddExpr())
 }
 
 def parseAtomicExpr() {
@@ -307,38 +271,16 @@ def parseAtomicExpr() {
     }
 }
 
-def parseApplyExpr() 
-    let(parseAtomicExpr(), (expr) {
-        skipIgnored()
-        ifHasNext(expr) {
-            {peek() == '$'}.if({
-                next()
-                ApplyExpr(expr, parseAtomicExpr())
-            }, expr)
-        }
-    })
-
-def parseMulExpr() 
-    let(parseApplyExpr(), (expr) {
-        skipIgnored()
-        ifHasNext(expr) {
-            {peek() == '*'}.if({
-                next()
-                MulExpr(expr, parseMulExpr())
-            }, expr)
-        }
-    })
-
-def parseAddExpr() 
-    let(parseMulExpr(), (expr) { 
-        skipIgnored()
-        ifHasNext(expr) {
-            {peek() == '+'}.if({
-                next()
-                AddExpr(expr, parseAddExpr())
-            }, expr)
-        }
-    })
+def parseApplyExpr() {
+    let expr parseAtomicExpr()
+    skipIgnored()
+    ifHasNext(expr) {
+        {peek() == '$'}.if({
+            next()
+            ApplyExpr(expr, parseAtomicExpr())
+        }, expr)
+    }
+}
 
 // Expr(Expr(2) * Expr(Expr(2) + Expr(1)))
 readString("2 * (2 + 1)", 0, parseAddExpr())
@@ -346,7 +288,7 @@ readString("2 * (2 + 1)", 0, parseAddExpr())
 // Expr(x)
 readString("x", 0, parseAddExpr())
 
-// Expr(λx.Expr(x))
+// Expr(λx Expr(x))
 readString("\\x x", 0, parseAddExpr())
 
 // Expr(Expr(Expr(x) $ Expr(1)) $ Expr(2))

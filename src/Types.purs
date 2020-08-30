@@ -29,6 +29,7 @@ data Expr
   | HandleExpr Expr Expr
   | MatchExpr Expr (List Pattern)
   | DefExpr (Maybe String) String Expr
+  | LetExpr String Expr
   | InfixExpr Assoc String BigInt Expr
   | ClassExpr String (List Arg)
   | ImportExpr String

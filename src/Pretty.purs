@@ -79,6 +79,11 @@ exprDoc (DefExpr clazz name expr) =
   txt name <>
   txt " = " <> 
   nest 2 (line <> exprDoc expr)
+exprDoc (LetExpr name expr) = 
+  text "blue" "let " <> 
+  txt name <>
+  txt " = " <> 
+  nest 2 (line <> exprDoc expr)
 exprDoc (InfixExpr assoc op int expr) = 
   text "blue" "infix " <> 
   assocDoc assoc <> 
