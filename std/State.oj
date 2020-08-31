@@ -6,6 +6,9 @@
 class Get()
 class Set(state)
 
+def Get.toString() "Get()"
+def Set.toString() "Set(" + state.toString() + ")"
+
 def get() do Get()
 def set(state) do Set(state)
 
@@ -17,5 +20,8 @@ def mutable(state, lazy f)
     handle (f()) (effect) match (effect) {
         Get() mutable(state) { resume(state) }
         Set(newState) mutable(newState) { resume({}) }
-        Any() resume(do effect)
+        Any() {
+            let cont do effect
+            mutable(state) { resume(cont) }
+        }
     }

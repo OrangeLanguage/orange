@@ -1,33 +1,16 @@
-def and(a, lazy b) a.and(b())
-def or(a, lazy b) a.or(b())
+infix right 3 &&(a, lazy b) a.and(b())
+infix right 2 ||(a, lazy b) a.or(b())
 
-infix right 3 && and
-infix right 2 || or
+infix left 6 +(x, y) x.add(y)
+infix left 6 -(x, y) x.sub(y)
+infix left 7 *(x, y) x.mul(y)
+infix left 7 /(x, y) x.div(y)
+infix left 7 %(x, y) x.rem(y)
+infix left 8 ^(x, y) x.pow(y)
 
-def add(x, y) x.add(y)
-def sub(x, y) x.sub(y)
-def mul(x, y) x.mul(y)
-def div(x, y) x.div(y)
-def rem(x, y) x.rem(y)
-def pow(x, y) x.pow(y)
-
-infix left 6 + add
-infix left 6 - sub
-infix left 7 * mul
-infix left 7 / div
-infix left 7 % rem
-infix left 8 ^ pow
-
-def lt(x, y) x.lt(y)
-def gt(x, y) x.gt(y)
-def eq(x, y) x.eq(y)
-def leq(x, y) x.leq(y)
-def geq(x, y) x.geq(y)
-def neq(x, y) x.neq(y)
-
-infix left 4 < lt
-infix left 4 > gt
-infix left 4 == eq
-infix left 4 <= leq
-infix left 4 >= geq
-infix left 4 != neq
+infix left 4 <(x, y) x.lt(y)
+infix left 4 >(x, y) x.gt(y)
+infix left 4 ==(x, y) x.eq(y)
+infix left 4 <=(x, y) x.leq(y)
+infix left 4 >=(x, y) x.geq(y)
+infix left 4 !=(x, y) x.neq(y)

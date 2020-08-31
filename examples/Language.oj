@@ -1,5 +1,7 @@
 import "std/Prelude.oj"
+import "std/Control.oj"
 import "std/Read.oj"
+import "std/State.oj"
 
 class IntExpr(int)
 class AddExpr(lhs, rhs)
@@ -10,8 +12,11 @@ class ApplyExpr(fn, arg)
 
 class Env(get)
 
+def emptyEnv
+    Env((name) do "undefined " + name)
+
 def Env.insert(name, value)
-    Env((n) {n == name}.if(value, this.get(n)))
+    Env((n) if (n == name) { value }.else { this.get(n) })
 
 def Any.eval(env) match (this) {
     IntExpr(int) int
@@ -22,7 +27,7 @@ def Any.eval(env) match (this) {
     ApplyExpr(fn, arg) fn.eval(env)(arg.eval(env))
 }
 
-def Any.evalRoot() this.eval(Env((name) do {"undefined " + name}))
+def Any.evalRoot() this.eval(emptyEnv)
 
 def IntExpr.toString() this.int.toString()
 def AddExpr.toString() "(" + this.lhs.toString() + " + " + this.rhs.toString() + ")"
@@ -31,34 +36,35 @@ def IdentExpr.toString() this.name
 def LambdaExpr.toString() "(λ" + this.name + " " + this.expr.toString() + ")"
 def ApplyExpr.toString() "(" + this.fn.toString() + " " + this.arg.toString() + ")"
 
-def charToInt(c)
-    c.toInt() - '0'.toInt()
+def ifEnd(lazy then, lazy f)
+    if (hasNext().not()) { then() }.else { f() }
+
+def skipIgnored()
+    while (hasNext() && peek() == ' ') {
+        next()
+    }
 
 def charIsInt(c)
     c >= '0' && c <= '9'
 
-def ifHasNext(lazy then, lazy f)
-    {hasNext().not()}.if(then(), f())
+def charToInt(c)
+    c.toInt() - '0'.toInt()
 
-def skipIgnored()
-    {hasNext() && peek() == ' '}.if({
-        next()
-        skipIgnored()
-    }, {})
-
-def parseIntExpr() {
-    def go(sum) 
-        {hasNext() && charIsInt(peek())}.if({
+def parseIntExpr()
+    mutable (0) {
+        while (hasNext() && charIsInt(peek())) {
             let char peek()
             next()
-            go(sum * 10 + charToInt(char))
-        }, sum)
-    IntExpr(go(0))
-}
+            modify((sum) sum * 10 + charToInt(char))
+        }
+        IntExpr(get())
+    }
 
 def parseParens() {
-    let expr parseAddExpr();
-    {peek() != ')'}.if(do "Expected ')'") {
+    let expr parseAddExpr()
+    if (peek == ')') {
+        do "Expected ')'"
+    }.else {
         next()
         expr
     }
@@ -67,15 +73,15 @@ def parseParens() {
 def charIsIdent(c)
     c >= 'a' && c <= 'z'
 
-def parseIdentExpr() {
-    def go(ident) 
-        {hasNext() && charIsIdent(peek())}.if({
+def parseIdentExpr()
+    mutable ("") {
+        while (hasNext() && charIsIdent(peek())) {
             let char peek()
             next()
-            go(ident + char.toString())
-        }, ident)
-    IdentExpr(go(""))
-}
+            modify((ident) ident + char.toString())
+        }
+        IdentExpr(get())
+    }
 
 def parseLambdaExpr() {
     let ident parseIdentExpr()
@@ -85,59 +91,65 @@ def parseLambdaExpr() {
 
 def parseAtomicExpr() {
     skipIgnored()
-    ifHasNext(do "Unexpected end of reader") {
-        {peek() == '('}.if({ next() parseParens() }) {
-            {peek() == '\\'}.if({ next() parseLambdaExpr() }) {
-                {charIsInt(peek())}.if(parseIntExpr()) {
-                    {charIsIdent(peek())}.if(parseIdentExpr()) {
-                        do {"Unexpected character '" + peek().toString() + "'"}
-                    }
-                }
-            }
+    ifEnd (do "Unexpected end of reader") {
+        if (peek() == '(') {
+            next()
+            parseParens()
+        }.elif (peek() == '\\') {
+            next()
+            parseLambdaExpr()
+        }.elif (charIsInt(peek())) {
+            parseIntExpr()
+        }.elif (charIsIdent(peek())) {
+            parseIdentExpr()
+        }.else {
+            do "Unexpected character '" + peek().toString() + "'"
         }
     }
 }
 
 def parseApplyTrail(expr) {
     skipIgnored()
-    ifHasNext(expr) {
-        {peek() == ')'}.if({ 
+    ifEnd (expr) {
+        if (peek() == ')') {
             next()
             expr
-        }, parseApplyTrail(ApplyExpr(expr, parseAtomicExpr())))
+        }.else {
+            parseApplyTrail(ApplyExpr(expr, parseAtomicExpr()))
+        }
     }
 }
 
 def parseApplyExpr() {
     let expr parseAtomicExpr()
     skipIgnored()
-    ifHasNext(expr) {
-        {peek() == '('}.if({
+    ifEnd (expr) {
+        if (peek() == '(') {
             next()
-            parseApplyTrail(expr)
-        }, expr)
+            parseApplyTrail()
+        }.else { expr }
     }
 }
 
 def parseMulExpr() {
     let expr parseApplyExpr()
     skipIgnored()
-    ifHasNext(expr) {
-        {peek() == '*'}.if({
+    ifEnd (expr) {
+        if (peek() == "*") {
             next()
             MulExpr(expr, parseMulExpr())
-        }, expr)
+        }.else { expr }
     }
 }
 
 def parseAddExpr() {
     let expr parseMulExpr()
     skipIgnored()
-    ifHasNext(expr) {
-        {peek() == '+'}.if({
+    ifEnd (expr) {
+        if (peek() == "+") {
             next()
             AddExpr(expr, parseAddExpr())
-        }, expr)
+        }.else { expr }
     }
 }
 

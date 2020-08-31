@@ -4,6 +4,8 @@
 // collecting in a list.
 class Write(elem)
 
+def Write.toString() "Write(" + elem.toString() + ")"
+
 def write(elem) do Write(elem)
 
 // Handles the write effect by logging each element.
@@ -13,12 +15,18 @@ def writeLog(lazy f)
             log(elem)
             writeLog { resume({}) }
         }
-        Any() resume(do effect)
+        Any() {
+            let cont do effect
+            writeLog { resume(cont) }
+        }
     }
 
 // Handles the write effect by writing to a list.
 def writeList(list, lazy f)
     handle ({ f() list }) (effect) match (effect) {
         Write(elem) elem : writeList(list) { resume({}) }
-        Any() resume(do effect)
+        Any() {
+            let cont do effect
+            writeList(list) { resume(cont) }
+        }
     }

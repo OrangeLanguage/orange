@@ -38,3 +38,10 @@ def Else.elif if
 // Terminates an if expression with an alternative.
 def Then.else(lazy alternative) this.result
 def Else.else(lazy alternative) alternative()
+
+// Recursively tests a condition 
+def while(lazy condition, lazy then) 
+    if (condition()) { 
+        then()
+        while (condition()) { then() }
+    }.else {}

@@ -92,19 +92,20 @@ compileCont (BlockExpr (expr : Nil)) f = compileCont expr f
 compileCont (BlockExpr exprs) f = compileConts exprs \irs -> f $ BlockIr irs
 compileCont (LambdaExpr args expr) f = do
   env <- get
-  exprIr <- compileCont expr (\x -> pure $ singleton $ ApplyIr (IdentIr "_cont") (x : Nil))
+  contName <- ((<>) "_cont") <$> fresh
+  exprIr <- compileCont expr (\x -> pure $ singleton $ ApplyIr (IdentIr contName) (x : Nil))
   let evalIr = foldr evalArg (BlockIr exprIr) args
   put env
-  f $ LambdaIr (map (\(Arg _ name) -> name) args <> singleton "_cont") evalIr
+  f $ LambdaIr (map (\(Arg _ name) -> name) args <> singleton contName) evalIr
 compileCont (DoExpr expr) f = do
   name <- fresh
   cont <- f $ IdentIr name
   compileCont expr (\ir -> pure $ singleton $ DoIr ir name (BlockIr cont))
 compileCont (HandleExpr expr cont) f = do
-  ir <- compile expr
+  ir <- compileCont expr f
   let resumeExpr = ApplyExpr (LambdaExpr (singleton $ Arg EagerEval "resume") cont) (singleton $ ExternExpr "_e.resume")
   contIr <- compile $ ApplyExpr resumeExpr (singleton $ ExternExpr "_e.effect")
-  f $ HandleIr (BlockIr ir) (BlockIr contIr)
+  pure $ singleton $ HandleIr (BlockIr ir) (BlockIr contIr)
 compileCont (MatchExpr expr patterns) f = compileCont (desugarMatch expr patterns) f
 compileCont (DefExpr Nothing name expr) f = do
   irs <- compile expr
@@ -129,11 +130,11 @@ compileCont (ClassExpr name args) f = do
       LambdaExpr args $ 
         ExternExpr ("new _" <> name <> "(" <> intercalate ", " (map escape argNames) <> ")")
   matchAny <- compile $ 
-    DefExpr (Just "Any") ("as" <> name) $ 
+    DefExpr (Just "Any") ("match" <> name) $ 
       LambdaExpr (Arg EagerEval "f" : Arg LazyEval "cont" : Nil) $
         ApplyExpr (IdentExpr "cont") Nil
   matchThis <- compile $
-    DefExpr (Just name) ("as" <> name) $
+    DefExpr (Just name) ("match" <> name) $
       LambdaExpr (Arg EagerEval "f" : Arg LazyEval "cont" : Nil) $
         ApplyExpr (IdentExpr "f") (map (\n -> DotExpr (IdentExpr "this") n) argNames)
   cont <- f $ IdentIr name
@@ -156,7 +157,7 @@ evalArg (Arg LazyEval name) ir = ir
 desugarMatch :: Expr -> List Pattern -> Expr
 desugarMatch expr Nil = IdentExpr "undefined"
 desugarMatch expr ((Pattern name args cas) : patterns) =
-  let dot = DotExpr expr ("as" <> name)
+  let dot = DotExpr expr ("match" <> name)
       lambda = LambdaExpr args cas
   in ApplyExpr dot (lambda : desugarMatch expr patterns : Nil)
 

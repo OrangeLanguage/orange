@@ -5,6 +5,11 @@
 class Next()
 class HasNext()
 class Peek()
+
+def Next.toString() "Next()"
+def HasNext.toString() "HasNext()"
+def Peek.toString() "Peek()"
+
 def next() do Next()
 def hasNext() do HasNext()
 def peek() do Peek()
@@ -15,5 +20,8 @@ def readString(string, i, lazy f)
         Next() readString(string, i + 1) { resume({}) }
         HasNext() readString(string, i) { resume(i < string.length()) }
         Peek() readString(string, i) { resume(string.charAt(i)) }
-        Any() resume(do effect)
+        Any() {
+            let cont do effect
+            readString(string, i) { resume(cont) }
+        }
     }

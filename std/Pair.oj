@@ -1,1 +1,3 @@
 class Pair(fst, snd)
+
+def Pair.toString() "Pair(" + fst.toString() + ", " + snd.toString() + ")"

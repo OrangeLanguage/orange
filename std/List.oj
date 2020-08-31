@@ -27,17 +27,17 @@ def for(list, f) match (list) {
     }
 }
 
-def map(list, f) match (list) {
+def Any.map(f) match (this) {
     Nil() nil
     Cons(car, cdr) f(car) : map(cdr, f)
 }
 
-def fold(list, acc, f) match (list) {
+def Any.fold(acc, f) match (this) {
     Nil() acc
     Cons(car, cdr) fold(cdr, f(car, acc), f)
 }
 
-def filter(list, f) match (list) {
+def Any.filter(f) match (this) {
     Nil() nil
     Cons(car, cdr) f(car).if(
         car : filter(cdr, f),

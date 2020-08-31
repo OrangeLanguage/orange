@@ -3,6 +3,8 @@
 // continuations, which can be used to implement arbitrary control flow.
 class CC()
 
+def CC.toString() "CC()"
+
 def cc() do CC()
 
 // Applies a function to the current continuation. Equivalent to Scheme's 
@@ -13,5 +15,8 @@ def callCC(f) f(cc())
 def runCC(lazy f)
     handle (f()) (effect) match (effect) {
         CC() runCC(resume(resume))
-        Any() resume(do effect)
+        Any() {
+            let cont do effect
+            resume(cont)
+        }
     }

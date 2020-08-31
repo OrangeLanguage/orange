@@ -108,11 +108,11 @@ generateDoc _ (DoIr ir name cont) = do
     irDoc <>
     txt ", resume: (" <> 
     txt name <>
-    txt ", __cont) => " <>
+    txt ", _cont) => " <>
     txt name <>
     txt "(" <>
     txt name <>
-    txt " => __cont(" <>
+    txt " => _cont(" <>
     nest 2 contDoc <>
     txt "))}})()"
 generateDoc _ (HandleIr ir cont) = do

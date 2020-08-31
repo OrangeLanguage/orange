@@ -31,10 +31,18 @@ The repl can be started with `npm install` and `npm start`.
 To begin, we'll define a simple arithmetic language.
 
 ```
+import "std/Prelude.oj"
+
 class IntExpr(int)
 class AddExpr(lhs, rhs)
 class MulExpr(lhs, rhs)
 ```
+
+Classes in Orange are similar to data classes in other languages. They can be
+constructed using their name (`IntExpr(1)`) and their fields can be 
+accessed with dot notation (`expr.int`). Methods can be defined on classes 
+outside of their definition (`def IntExpr.square()`) so that users can extend 
+existing classes with new methods.
 
 Now that we've declared our data structure, we can implement an interpreter with
 pattern matching and recursion.
@@ -42,41 +50,50 @@ pattern matching and recursion.
 ```
 def Any.eval() match (this) {
     IntExpr(int) int
-    AddExpr(lhs, rhs) lhs.eval().add(rhs.eval())
-    MulExpr(lhs, rhs) lhs.eval().mul(rhs.eval())
+    AddExpr(lhs, rhs) lhs.eval() + rhs.eval()
+    MulExpr(lhs, rhs) lhs.eval() * rhs.eval()
 }
 
 // 2
 AddExpr(IntExpr(1), IntExpr(1)).eval()
 ```
 
-The `add` and `mul` methods are looking a bit ugly, but we can fix that by
-defining some operators.
+The `match` keyword is similar to pattern matching in functional languages or
+`switch` statements in imperative languages. It allows us to branch on the type
+of an expression and deconstruct it, which we can then use to evaluate the 
+expression.
+
+We declare `eval` as a method on `Any`. The Any type is the top type (`Object`)
+for Orange, which allows eval to work for any object that has `matchIntExpr`,
+`matchAddExpr`, or `matchMulExpr` defined.
+
+This arithmetic language is neat, but it only interprets simple programs. To add 
+functions and application, we'll need an environment.
 
 ```
-infix left 6 +(x, y) x.add(y)
-infix left 7 *(x, y) x.mul(y)
+import "std/Control.oj"
 
-def Any.eval() match (this) {
-    IntExpr(int) int
-    AddExpr(lhs, rhs) lhs.eval() + rhs.eval()
-    MulExpr(lhs, rhs) lhs.eval() * rhs.eval()
-}
-```
-
-This arithmetic language is cool, but it only works for simple programs. To add 
-functions and applications, we'll need an environment.
-
-```
 class Env(get)
 
-infix left 4 ==(x, y) x.eq(y)
+def emptyEnv
+    Env((name) do "undefined " + name)
 
 def Env.insert(name, value)
-    Env((n) {n == name}.if(value, this.get(n)))
+    Env((n) if (n == name) { value }.else { this.get(n) })
 ```
 
-Now that we have an environment, we can interpret functions and applications.
+Here we define an environment as a function from a name to a value. The empty
+environment is a function which always throws an exception (`do` in Orange is
+similar to `throw`, but more powerful). Inserting a value into an environment 
+creates a function that returns that value if the name is equal. 
+
+The line `import "std/Control.oj"` imports the `if` function, which uses 
+trailing block expressions to provide a convenient if expression. Since if is
+just a function, we could have equivalently written 
+`if(n == name, value).else(this.get(n))`. Behind the scenes, if uses lazy 
+parameters to prevent evaluation of unused branches
+
+With our environment implemented, we can now interpret functions and application.
 
 ```
 class IdentExpr(name)
@@ -92,7 +109,7 @@ def Any.eval(env) match (this) {
     ApplyExpr(fn, arg) fn.eval(env)(arg.eval(env))
 }
 
-def Any.evalRoot() this.eval(Env((name) do {"undefined " + name}))
+def Any.evalRoot() this.eval(emptyEnv)
 
 // 2
 LambdaExpr("a", IdentExpr("a")).evalRoot()(2)
@@ -104,107 +121,210 @@ LambdaExpr("a", MulExpr(IntExpr(2), IdentExpr("a"))).evalRoot()(2)
 ApplyExpr(LambdaExpr("a", MulExpr(IntExpr(2), IdentExpr("a"))), IntExpr(2)).evalRoot()
 ```
 
-With our evaluator complete, we can move on to the parser. First we'll need to
-define a reader effect.
+This evaluator leverages Orange's functions and closures to avoid writing 
+variable substitution or closure capturing code. As a bonus we get full
+compatability with Orange, allowing us to use functions in our mini language as 
+though they were Orange functions.
+
+With our evaluator complete, we can move on to the parser. We'll need to define 
+a reader effect to read from a string, but first we'll define a simpler effect 
+to introduce the concept.
 
 ```
-infix left 4 <(x, y) x.lt(y)
-infix left 4 >(x, y) x.gt(y)
+class Get()
+class Set(state)
 
+def get() do Get()
+def set(state) do Set(state)
+def modify(f) set(f(get()))
+```
+
+The state effect represents a changing state, where `get` returns the current 
+state and `set` changes the state. We also define `modify`, which applies a 
+function to the current state. Right now these functions will simply terminate 
+the program. To make them work properly, we'll need to define a handler 
+(`handle` in Orange is similar to `catch`, but more powerful). Since this is a 
+rather complicated function, we'll build it step by step. 
+
+```
+def mutable(state, lazy f) 
+    handle (f()) (effect) match (effect) {
+        Get() resume(state)
+        Set(newState) resume({})
+    }
+
+// 3
+mutable (2) { get() + 1 }
+```
+
+`mutable` is a function that takes in a state and a `lazy` expression to evaluate
+with that state. Lazy expressions are simply expressions that are passed as zero
+argument functions. `handle` evaluates the expression and catches any effects 
+thrown. If the effect is `Get`, it resumes evaluation with the state. If the 
+effect is `Set`, it resumes evaluation with the empty block.
+
+At the moment, this function isn't doing much mutating. It also cannot handle
+more than one effect, as effects in the resume function are not being handled. 
+We can solve both of these using recursion.
+
+```
+def mutable(state, lazy f) 
+    handle (f()) (effect) match (effect) {
+        Get() mutable(state) { resume(state) }
+        Set(newState) mutable(newState) { resume({}) }
+    }
+
+// 3
+mutable (0) {
+    set(1)
+    modify((x) x + 2)
+    get()
+}
+```
+
+By resuming in our handler, we can handle any number of effects. Passing the 
+new state to our handler allows us to continue evaluation with the new state. 
+Combining these two allows us to easily use mutable variables.
+
+Before we can continue, there is one last change we need to make to our mutable
+handler. It currently handles every effect, which prevents us from composing it 
+with other effect handlers.
+
+```
+def mutable(state, lazy f) 
+    handle (f()) (effect) match (effect) {
+        Get() mutable(state) { resume(state) }
+        Set(newState) mutable(newState) { resume({}) }
+        Any() {
+            let cont do effect
+            mutable(state) { resume(cont) }
+        }
+    }
+```
+
+The `Any` case matches any object and immediately re-throws it. If it is 
+handled, it binds the result to `cont` and resumes evaluation. `let` is used 
+instead of `def` to declare local variables, but cannot define recursive
+functions.
+
+With our mutable effect finished, we can now implement the reader effect.
+
+```
 class Next()
 class HasNext()
 class Peek()
+
 def next() do Next()
 def hasNext() do HasNext()
 def peek() do Peek()
 
 def readString(string, i, lazy f)
-    handle (f()) (eff) match (eff) {
+    handle (f()) (effect) match (effect) {
         Next() readString(string, i + 1) { resume({}) }
         HasNext() readString(string, i) { resume(i < string.length()) }
         Peek() readString(string, i) { resume(string.charAt(i)) }
-        Any() resume(do eff)
+        Any() {
+            let cont do effect
+            readString(string, i) { resume(cont) }
+        }
     }
 ```
+
+The reader effect supports three operations: `next`, which will advance the
+reader one element; `hasNext`, which will be true if there is another element to
+read; and `peek`, which will return the current element. The state of the reader
+is stored as a string and and index, though one could write a handler which 
+reads from a file or a list of characters.
 
 We can use this effect to define an integer parser.
 
 ```
 def IntExpr.toString() this.int.toString()
 
-infix left 6 -(x, y) x.sub(y)
-infix left 4 <=(x, y) x.leq(y)
-infix left 4 >=(x, y) x.geq(y)
-infix left 3 &&(x, lazy y) x.and(y())
-infix left 2 ||(x, lazy y) x.or(y())
-
-def skipIgnored()
-    (hasNext() && peek() == ' ').if({
-        next()
-        skipIgnored()
-    }, {})
+def charIsInt(c)
+    c >= '0' && c <= '9'
 
 def charToInt(c)
     c.toInt() - '0'.toInt()
 
-def charIsInt(c)
-    c >= '0' && c <= '9'
+def while(lazy condition, lazy then) 
+    if (condition()) { 
+        then()
+        while (condition()) { then() }
+    }.else {}
 
-def parseIntExpr() {
-    def go(sum) 
-        {hasNext() && charIsInt(peek())}.if({
+def parseIntExpr()
+    mutable (0) {
+        while (hasNext() && charIsInt(peek())) {
             let char peek()
             next()
-            go(sum * 10 + charToInt(char))
-        }, sum)
-    skipIgnored()
-    IntExpr(go(0))
-}
+            modify((sum) sum * 10 + charToInt(char))
+        }
+        IntExpr(get())
+    }
 
 // 123
 readString("123", 0, parseIntExpr())
 ```
 
-Now we can use precedence climbing to parse addition and multiplication.
+`parseIntExpr` uses both mutable and read effects, creating a mutable integer
+and modifying it while the next character is an integer. `while` is implemented 
+as a lazy function which recursively tests its condition. When the parser 
+reaches a non-integer character, it wraps the result in an integer expression
+and returns it.
+
+With the root parser done, we can use precedence climbing to parse addition and
+multiplication.
 
 ```
 def AddExpr.toString() "(" + this.lhs.toString() + " + " + this.rhs.toString() + ")"
 def MulExpr.toString() "(" + this.lhs.toString() + " * " + this.rhs.toString() + ")"
 
-def ifHasNext(lazy then, lazy f)
-    {hasNext().not()}.if(then(), f())
+def ifEnd(lazy then, lazy f)
+    if (hasNext().not()) { then() }.else { f() }
 
-// We'll implement this next
+def skipIgnored()
+    while (hasNext() && peek() == ' ') {
+        next()
+    }
+
+// We'll implement this later
 def parseApplyExpr parseIntExpr
 
 def parseMulExpr() {
     let expr parseApplyExpr()
     skipIgnored()
-    ifHasNext(expr) {
-        {peek() == '*'}.if({
+    ifEnd (expr) {
+        if (peek() == "*") {
             next()
             MulExpr(expr, parseMulExpr())
-        }, expr)
+        }.else { expr }
     }
 }
 
 def parseAddExpr() {
     let expr parseMulExpr()
     skipIgnored()
-    ifHasNext(expr) {
-        {peek() == '+'}.if({
+    ifEnd (expr) {
+        if (peek() == "+") {
             next()
             AddExpr(expr, parseAddExpr())
-        }, expr)
+        }.else { expr }
     }
 }
 
 // ((2 * 2) + 1)
-readString("2*2+1", 0, parseAddExpr())
+readString("2 * 2 + 1", 0, parseAddExpr())
 
 // (1 + (2 * 2))
-readString("1+2*2", 0, parseAddExpr())
+readString("1 + 2 * 2", 0, parseAddExpr())
 ```
+
+`skipIgnored` skips whitespace and is called at the beginning of each parser.
+`ifEnd` is a simple convenience function that keeps the parser from running past
+the end of the string. `parseAddExpr` and `parseMulExpr` are both recursive, 
+parsing an expression and then optionally parsing an operator. Since 
+multiplication has higher precedence than addition, it is defined first.
 
 The rest of the parser is simply an extension to the existing parser.
 
@@ -214,9 +334,10 @@ def LambdaExpr.toString() "(λ" + this.name + " " + this.expr.toString() + ")"
 def ApplyExpr.toString() "(" + this.fn.toString() + " " + this.arg.toString() + ")"
 
 def parseParens() {
-    skipIgnored()
-    let expr parseAddExpr();
-    {peek() != ')'}.if(do "Expected ')'") {
+    let expr parseAddExpr()
+    if (peek == ')') {
+        do "Expected ')'"
+    }.else {
         next()
         expr
     }
@@ -225,19 +346,17 @@ def parseParens() {
 def charIsIdent(c)
     c >= 'a' && c <= 'z'
 
-def parseIdentExpr() {
-    def go(ident) 
-        {hasNext() && charIsIdent(peek())}.if({
+def parseIdentExpr()
+    mutable ("") {
+        while (hasNext() && charIsIdent(peek())) {
             let char peek()
             next()
-            go(ident + char.toString())
-        }, ident)
-    skipIgnored()
-    IdentExpr(go(""))
-}
+            modify((ident) ident + char.toString())
+        }
+        IdentExpr(get())
+    }
 
 def parseLambdaExpr() {
-    skipIgnored()
     let ident parseIdentExpr()
     skipIgnored()
     LambdaExpr(ident.name, parseAddExpr())
@@ -245,15 +364,31 @@ def parseLambdaExpr() {
 
 def parseAtomicExpr() {
     skipIgnored()
-    ifHasNext(do "Unexpected end of reader") {
-        {peek() == '('}.if({ next() parseParens() }) {
-            {peek() == '\\'}.if({ next() parseLambdaExpr() }) {
-                {charIsInt(peek())}.if(parseIntExpr()) {
-                    {charIsIdent(peek())}.if(parseIdentExpr()) {
-                        do "Unexpected character"
-                    }
-                }
-            }
+    ifEnd (do "Unexpected end of reader") {
+        if (peek() == '(') {
+            next()
+            parseParens()
+        }.elif (peek() == '\\') {
+            next()
+            parseLambdaExpr()
+        }.elif (charIsInt(peek())) {
+            parseIntExpr()
+        }.elif (charIsIdent(peek())) {
+            parseIdentExpr()
+        }.else {
+            do "Unexpected character '" + peek().toString() + "'"
+        }
+    }
+}
+
+def parseApplyTrail(expr) {
+    skipIgnored()
+    ifEnd (expr) {
+        if (peek() == ')') {
+            next()
+            expr
+        }.else {
+            parseApplyTrail(ApplyExpr(expr, parseAtomicExpr()))
         }
     }
 }
@@ -261,11 +396,11 @@ def parseAtomicExpr() {
 def parseApplyExpr() {
     let expr parseAtomicExpr()
     skipIgnored()
-    ifHasNext(expr) {
-        {peek() == '$'}.if({
+    ifEnd (expr) {
+        if (peek() == '(') {
             next()
-            ApplyExpr(expr, parseAtomicExpr())
-        }, expr)
+            parseApplyTrail()
+        }.else { expr }
     }
 }
 
@@ -298,6 +433,41 @@ def inc eval("\\x x + 1")
 inc(1)
 ```
 
+While this language is not particularly complex, it shows how Orange's small 
+feature set (definitions, functions, classes and effects) can be used to implement 
+non-trivial programs with familiar yet extensible semantics. Further extensions 
+would require the backtracking and ambiguity effects which, while really cool, 
+would take too long to properly implement, test, and explain. If you're 
+interested though, here's a prototype.
+
+```
+def readString(string, i, lazy f)
+    handle (f()) (effect) match (effect) {
+        Next() readString(string, i + 1) { resume({}) }
+        HasNext() readString(string, i) { resume(i < string.length()) }
+        Peek() readString(string, i) { resume(string.charAt(i)) }
+        // Attempts to resume with try, handling any effects by resuming with else
+        Backtrack(try, else) 
+            handle (readString(string, i) { resume(try()) }) { resume(else) }
+        Any() {
+            let cont do effect
+            readString(string, i) { resume(cont) }
+        }
+    }
+
+// Handles the ambiguity effect by collecting all possible results in a list.
+def ambiguousList(lazy f)
+    handle (singleton(f())) (effect) match (effect) {
+        // Concatenates the results of resuming with true and resuming with false
+        // Note: list concatenation isn't currently implemented
+        Ambiguous() ambiguousList { resume(true) } + ambiguousList { resume(false) }
+        Any() {
+            let cont do effect
+            writeList(list) { resume(cont) }
+        }
+    }
+```
+
 ## Potential Features
 
 Since Orange was implemented in 21 days during the Repl.it language jam, there 
@@ -308,8 +478,9 @@ the future.
 ### Improved Syntax and Syntax Sugar
 
 Orange's current syntax is sufficent but incomplete. Some examples of additional
-syntax include infix application, unary operators, better `def` and `let`,
-newline statement terminators, and additional patterns for pattern matching.
+syntax include infix application, unary operators, improved `def` and `let`,
+`handle` default matching, newline statement terminators, and additional 
+patterns for pattern matching.
 
 ### Named Effect Handlers
 
@@ -323,13 +494,20 @@ class Write(unique, elem)
 def Any.write(elem) do Write(this, elem)
 infix right 1 += write
 
+// Approximates named effects with unique objects
 def Unique.writeList(list, lazy f) {
     handle ({ f() list }) (effect) match (effect) {
         Write(unique, elem) 
             if (unique == this) { 
                 elem : writeList(list) { resume({}) }
-            }.else { resume(do effect) }
-        Any() resume(do effect)
+            }.else { 
+                let cont do effect
+                writeList (list) { resume(cont) }
+            }
+        Any() {
+            let cont do effect
+            writeList (list) { resume(cont) }
+        }
     }
 }
 
@@ -385,16 +563,19 @@ person:address:street.set("123rd St")
 Adding a type system to Orange has its pros and cons. On the upside, it greatly 
 improves static analysis for both objects and effects. On the downside, it
 reduces flexibilty and steepens the learning curve for new functional 
-programmers. We are generally in favor of type systems, but we are not sure
-if it is the correct choice for Orange--and even if it were, it would take lots
-of time that could be going towards implementing other features.
+programmers. While we are generally in favor of type systems, we are not sure if 
+it is the correct choice for Orange--and even if it were, it would take lots of 
+time that could be going towards implementing other features.
 
 If we were to add a type system, it would likely be an extension of Scala's Dot 
-Calculus with effect types and bidirectional type checking. Describing Orange's 
-syntax for such a type system is too speculative to be done here, but it would
-take the same familiarity over simplicity approach as the rest of the language.
+Calculus with effect types and bidirectional type checking. Orange's syntax for 
+such a type system would attempt to match the familiarity the rest of the 
+language.
 
 ## Getting Started
+
+Orange is written in PureScript, runs on JavaScript, and builds with npm and 
+spago. 
 
 ### Install Dependencies
 
@@ -410,8 +591,6 @@ spago build
 npm run repl
 ```
 
-### Run tests
+### VSCode
 
-```bash
-spago test
-```
+Orange includes a simple VSCode plugin located in [vscode].
