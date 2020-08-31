@@ -13,6 +13,14 @@ imperative style when dealing with side effects. To bridge this gap we created
 Orange, an easy to learn object-functional language that supports the best
 features of both object-oriented and purely-functional languages.
 
+- Familiar syntax and semantics
+- Simple and extensible classes
+- Generic pattern matching
+- Partial lazy evaluation with lazy parameters
+- Control flow (`if` `else` `while` `for`) as functions
+- The effect monad with resumable exceptions
+- Continuations with higher order resume (`resume(resume)`)
+
 ### That's cool and all, but show me some code
 
 In the spirit of the Repl.it language jam, we'll use Orange to implement a
