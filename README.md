@@ -593,4 +593,4 @@ npm run repl
 
 ### VSCode
 
-Orange includes a simple VSCode plugin located in [vscode].
+Orange includes a simple VSCode plugin located in [vscode](vscode).
